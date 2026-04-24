@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>백룸: 리얼리티 (Canvas 3D)</title>
+    <title>백룸: 리얼리티 (하드코어 미로)</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; user-select: none; }
         canvas { display: block; }
@@ -21,66 +21,61 @@
 
         .vignette {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at center, rgba(0,0,0,0) 40%, rgba(0,0,0,0.9) 100%);
+            background: radial-gradient(circle at center, rgba(0,0,0,0) 20%, rgba(0,0,0,1) 100%);
             pointer-events: none;
         }
 
         .noise {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.04;
-            background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.06;
+            background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
             pointer-events: none;
         }
 
         #ui-layer {
             position: absolute; top: 30px; left: 30px; color: #fff;
-            pointer-events: none; font-weight: bold; font-size: 1.2rem;
-            text-shadow: 2px 2px 0px #000; display: flex; flex-direction: column; gap: 15px; z-index: 20;
+            pointer-events: none; font-weight: bold; font-size: 1rem;
+            text-shadow: 2px 2px 0px #000; display: flex; flex-direction: column; gap: 10px; z-index: 20;
         }
 
         .rec-indicator { display: flex; align-items: center; gap: 10px; color: #ff3333; }
         .rec-dot {
-            width: 15px; height: 15px; background-color: #ff3333; border-radius: 50%;
+            width: 12px; height: 12px; background-color: #ff3333; border-radius: 50%;
             animation: blink 1s infinite;
         }
 
         @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
 
         #message-box {
-            position: absolute; top: 25%; left: 50%; transform: translateX(-50%);
-            color: #00ffcc; font-weight: bold; font-size: 1.5rem; text-shadow: 2px 2px 0px #000;
+            position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+            color: #ffcc00; font-weight: bold; font-size: 1.2rem; text-shadow: 2px 2px 0px #000;
             pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 20;
         }
 
         .stamina-bar {
             position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-            width: 300px; height: 6px; background: rgba(0,0,0,0.5);
+            width: 250px; height: 4px; background: rgba(255,255,255,0.1);
             border: 1px solid rgba(255,255,255,0.2); display: none; z-index: 20;
         }
-        #stamina-fill { width: 100%; height: 100%; background: #fff; transition: width 0.1s; }
+        #stamina-fill { width: 100%; height: 100%; background: #eee; transition: width 0.1s; }
 
         #crosshair {
-            position: absolute; top: 50%; left: 50%; width: 4px; height: 4px;
-            background: rgba(255,255,255,0.6); border-radius: 50%;
+            position: absolute; top: 50%; left: 50%; width: 12px; height: 12px;
+            border: 1px solid rgba(255,255,255,0.5); border-radius: 50%;
             transform: translate(-50%, -50%); pointer-events: none; z-index: 20;
         }
 
         .menu-screen {
             display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             flex-direction: column; justify-content: center; align-items: center;
-            background: rgba(10, 10, 10, 0.95); z-index: 100; color: white;
-        }
-
-        .menu-box {
-            padding: 40px; border: 2px solid #555; text-align: center;
-            background: rgba(0,0,0,0.8); border-radius: 5px; box-shadow: 0 0 50px rgba(0,0,0,1);
+            background: #050505; z-index: 100; color: white; text-align: center;
         }
 
         .btn {
-            margin-top: 30px; padding: 15px 40px; background: #fff; color: #000;
-            border: none; border-radius: 3px; font-size: 1.2rem; font-weight: bold;
-            cursor: pointer; transition: 0.2s; font-family: 'Courier New', Courier, monospace;
+            margin-top: 30px; padding: 12px 30px; background: none; color: #fff;
+            border: 1px solid #555; cursor: pointer; transition: 0.2s; 
+            font-family: 'Courier New', Courier, monospace; font-size: 1rem;
         }
-        .btn:hover { background: #ccc; transform: scale(1.05); }
+        .btn:hover { background: #fff; color: #000; }
 
         .hidden { display: none !important; }
     </style>
@@ -93,640 +88,432 @@
 
     <div id="ui-layer">
         <div class="rec-indicator"><div class="rec-dot"></div> REC</div>
-        <div id="level-status" style="color: #ddd; font-size: 1rem;">CH.1 - THE LOBBY</div>
-        <div style="color: #00ffcc; font-size: 1rem;">BATTERY: <span id="ammo-count">10</span>%</div>
+        <div id="level-status">LEVEL: 1 / 3</div>
+        <div>BATTERY: <span id="ammo-count">8</span>%</div>
     </div>
    
-    <div id="message-box">아이템 획득!</div>
+    <div id="message-box"></div>
     <div id="crosshair"></div>
-   
     <div class="stamina-bar" id="stamina-container"><div id="stamina-fill"></div></div>
 
     <div id="start-screen" class="menu-screen">
-        <div class="menu-box">
-            <h1 style="margin-top: 0; font-size: 3rem; letter-spacing: 5px;">BACKROOMS</h1>
-            <p style="color: #aaa;">빛을 따라가십시오. 어둠 속에 머물지 마십시오.</p>
-            <ul style="text-align: left; color: #888; font-size: 0.9rem; margin-top: 20px;">
-                <li>[ 좌클릭 ] 에너지 방출 (엔티티 무력화)</li>
-                <li>[ Shift ] 전력질주 (Stamina 소모)</li>
-                <li>[ 마우스 ] 시점 이동 및 무기 조준</li>
-            </ul>
-            <button class="btn" id="start-btn">TAPE 삽입 / 재생</button>
-        </div>
+        <h1 style="letter-spacing: 8px; font-size: 2.5rem;">THE MAZE</h1>
+        <p style="color: #666; font-size: 0.9rem;">당신은 혼자가 아닙니다. 멈추지 마십시오.<br>(사운드가 포함되어 있습니다)</p>
+        <button class="btn" id="start-btn">연결 시작</button>
     </div>
 
-    <div id="game-over-screen" class="menu-screen hidden" style="background: #000;">
-        <h1 style="font-size: 4rem; margin-bottom: 0; color: #900;">SIGNAL LOST</h1>
-        <p style="font-size: 1.2rem; color: #555;">연결이 끊어졌습니다.</p>
-        <button class="btn" onclick="location.reload()" style="background: #300; color: #fff;">테이프 되감기</button>
+    <div id="game-over-screen" class="menu-screen hidden">
+        <h1 style="color: #600;">SIGNAL LOST</h1>
+        <button class="btn" onclick="location.reload()">시스템 재부팅</button>
     </div>
 
-    <div id="game-win-screen" class="menu-screen hidden" style="background: #000;">
-        <h1 style="font-size: 4rem; margin-bottom: 0; color: #090;">SURVIVED</h1>
-        <p style="font-size: 1.2rem; color: #555;">현실 세계로 귀환했습니다.</p>
-        <button class="btn" onclick="location.reload()" style="background: #030; color: #fff;">다시 탐사하기</button>
+    <div id="next-level-screen" class="menu-screen hidden">
+        <h1 style="color: #aaa;">노클립(Noclip) 발생...</h1>
+        <p id="next-level-text">더 깊은 곳으로 이동합니다.</p>
+        <button class="btn" id="next-btn">계속</button>
     </div>
 
-    <div id="next-level-screen" class="menu-screen hidden" style="background: #000;">
-        <h1 style="font-size: 3rem; margin-bottom: 0; color: #aaa;">CH.2 - UNDERGROUND PARKING</h1>
-        <p style="font-size: 1.2rem; color: #555;">지하로 진입합니다...</p>
-        <button class="btn" id="next-btn" style="background: #333; color: #fff;">계속하기</button>
+    <div id="win-screen" class="menu-screen hidden">
+        <h1 style="color: #0f0;">YOU ESCAPED</h1>
+        <p>현실로 돌아왔습니다. 하지만 정말로 끝일까요?</p>
+        <button class="btn" onclick="location.reload()">다시 시작</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // --- 1. 전역 시스템 변수 ---
+        // --- Sound System ---
+        let audioCtx;
+        function initAudio() {
+            if (audioCtx) return;
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+
+        function playFootstep(isSprinting) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(60, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(isSprinting ? 0.3 : 0.15, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.1);
+        }
+
+        function playEntitySound(distance) {
+            if (!audioCtx || distance > 15) return;
+            const intensity = Math.max(0, 1 - (distance / 15));
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(50 + (Math.random() * 100), audioCtx.currentTime);
+            gain.gain.setValueAtTime(intensity * 0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
+        }
+
+        function playShootSound() {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
+        }
+
+        // --- Core Variables ---
         let scene, camera, renderer, clock;
         let isLocked = false, isGameOver = false;
-       
         let keys = { w: false, a: false, s: false, d: false, shift: false };
         let velocity = new THREE.Vector3();
-        let direction = new THREE.Vector3();
         let yaw = 0, pitch = 0;
-        let bobbing = 0, idleTime = 0;
-       
-        let targetFOV = 70;
-        let swayX = 0, swayY = 0;
-        const GUN_BASE_POS = new THREE.Vector3(0.3, -0.25, -0.5);
+        let bobbing = 0, lastStepTime = 0;
 
-        let stamina = 100;
-        let ammo = 10;
-        const staminaUI = document.getElementById('stamina-container');
-        const staminaFill = document.getElementById('stamina-fill');
-        const ammoUI = document.getElementById('ammo-count');
-        const msgBox = document.getElementById('message-box');
-        let msgTimeout;
-
-        const CHUNK_SIZE = 30;
-        const RENDER_DIST = 1;
-        let currentChunk = { x: -999, z: -999 };
+        let stamina = 100, ammo = 8;
+        const CHUNK_SIZE = 40; 
+        const GRID_RES = 12;   
         const chunks = new Map();
         let colliders = [], exits = [], pickups = [];
+        let entities = [];
+        
+        let currentLevel = 1;
+        let matWall, matFloor, matCeil, flashlight;
 
-        let matWall, matFloor, matCeil;
-        let flashlight;
-        let photoWallTex;
+        let gunGroup, muzzleFlash;
+        let recoilAmount = 0;
 
-        let currentLevel = 1, exitChunkX = 3, exitChunkZ = 3;
-        let numEntities = 4, entities = [];
-        const raycaster = new THREE.Raycaster();
-
-        let gunMesh;
-        let projectiles = [];
-
-        // --- 2. 초기화 ---
         function init() {
             scene = new THREE.Scene();
-            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            scene.fog = new THREE.FogExp2(0x000000, 0.08); 
+
+            renderer = new THREE.WebGLRenderer({ antialias: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            renderer.toneMapping = THREE.ACESFilmicToneMapping;
-            renderer.toneMappingExposure = 0.8;
+            renderer.setPixelRatio(window.devicePixelRatio > 1 ? 1.5 : 1);
             document.body.appendChild(renderer.domElement);
 
-            camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-            camera.position.set(0, 1.7, 0);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
+            camera.position.set(2, 1.7, 2); 
             scene.add(camera);
 
             clock = new THREE.Clock();
 
-            const texLoader = new THREE.TextureLoader();
-            texLoader.setCrossOrigin('Anonymous');
-           
-            photoWallTex = texLoader.load(
-                'https://images.unsplash.com/photo-1589330694653-efa6dc40baf0?auto=format&fit=crop&w=512&q=80',
-                function(texture) {
-                    texture.wrapS = THREE.RepeatWrapping;
-                    texture.wrapT = THREE.RepeatWrapping;
-                    texture.repeat.set(3, 3);
-                    if(currentLevel === 1) matWall.needsUpdate = true;
-                },
-                undefined,
-                function(err) {
-                    photoWallTex = createRealisticTex('wall1');
-                    if(currentLevel === 1) matWall.map = photoWallTex;
-                }
-            );
-            photoWallTex.wrapS = THREE.RepeatWrapping;
-            photoWallTex.wrapT = THREE.RepeatWrapping;
-            photoWallTex.repeat.set(3, 3);
+            matWall = new THREE.MeshStandardMaterial({ color: 0x998855, roughness: 1 });
+            matFloor = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.8 });
+            matCeil = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 1 });
 
-            matWall = new THREE.MeshStandardMaterial({ map: photoWallTex, color: 0xffdd88, roughness: 0.9, metalness: 0.1 });
-            matFloor = new THREE.MeshStandardMaterial({ map: createRealisticTex('floor1'), roughness: 0.8 });
-            matCeil = new THREE.MeshStandardMaterial({ map: createRealisticTex('ceil1'), roughness: 1.0 });
+            flashlight = new THREE.SpotLight(0xffffff, 2.8, 38, Math.PI/3, 0.7, 1.5);
+            camera.add(flashlight);
+            camera.add(flashlight.target);
+            flashlight.target.position.set(0,0,-1);
 
-            setRandomExitChunk();
-            setupLevelEnvironment();
-            createGunModel();
-            spawnEntities();
+            scene.add(new THREE.AmbientLight(0x1a1a1a, 0.18));
 
-            document.addEventListener('keydown', (e) => setKey(e.code, true));
-            document.addEventListener('keyup', (e) => setKey(e.code, false));
-            document.addEventListener('mousemove', onMouseMove);
-            document.addEventListener('mousedown', onMouseClick);
-            window.addEventListener('resize', onResize);
+            createGun();
 
-            document.getElementById('start-btn').addEventListener('click', () => {
-                window.focus();
-                const canvas = renderer.domElement;
-                try {
-                    canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock || document.body.requestPointerLock;
-                    if(canvas.requestPointerLock) canvas.requestPointerLock();
-                } catch(e) {}
-               
-                isLocked = true;
-                document.getElementById('start-screen').classList.add('hidden');
-                document.getElementById('next-level-screen').classList.add('hidden');
+            document.addEventListener('keydown', (e) => handleKey(e.code, true));
+            document.addEventListener('keyup', (e) => handleKey(e.code, false));
+            document.addEventListener('mousemove', (e) => {
+                if(!isLocked) return;
+                yaw -= e.movementX * 0.002;
+                pitch -= e.movementY * 0.002;
+                pitch = Math.max(-1.5, Math.min(1.5, pitch));
             });
+            document.addEventListener('mousedown', shoot);
+            
+            document.getElementById('start-btn').onclick = () => {
+                initAudio();
+                renderer.domElement.requestPointerLock();
+                document.getElementById('start-screen').classList.add('hidden');
+            };
 
-            document.getElementById('next-btn').addEventListener('click', () => startNextLevel());
+            document.getElementById('next-btn').onclick = startNextLevel;
 
             document.addEventListener('pointerlockchange', () => {
-                if(document.pointerLockElement !== document.body && document.pointerLockElement !== renderer.domElement) {
-                    isLocked = false;
-                    if(!isGameOver && currentLevel === 1) {
-                        document.getElementById('start-screen').classList.remove('hidden');
-                    } else if (!isGameOver && currentLevel === 2) {
-                        document.getElementById('start-screen').classList.remove('hidden');
-                    }
-                } else {
-                    isLocked = true;
-                }
+                isLocked = document.pointerLockElement === renderer.domElement;
             });
 
+            spawnLevel();
             animate();
         }
 
-        function createRealisticTex(type) {
-            const cvs = document.createElement('canvas');
-            cvs.width = 512; cvs.height = 512;
-            const ctx = cvs.getContext('2d');
-
-            if (type === 'wall1') {
-                ctx.fillStyle = '#d4ca98'; ctx.fillRect(0,0,512,512);
-                ctx.fillStyle = 'rgba(0,0,0,0.03)';
-                for(let x=0; x<512; x+=16) { ctx.fillRect(x, 0, 4, 512); }
-                for(let i=0; i<30000; i++) {
-                    ctx.fillStyle = `rgba(50,40,0,${Math.random()*0.05})`;
-                    ctx.fillRect(Math.random()*512, Math.random()*512, 4, 4);
-                }
-            } else if (type === 'wall2') {
-                ctx.fillStyle = '#555555'; ctx.fillRect(0,0,512,512);
-                for(let i=0; i<40000; i++) {
-                    ctx.fillStyle = Math.random() > 0.5 ? `rgba(0,0,0,${Math.random()*0.1})` : `rgba(255,255,255,${Math.random()*0.05})`;
-                    ctx.fillRect(Math.random()*512, Math.random()*512, 3, 3);
-                }
-                ctx.fillStyle = '#ddcc00'; ctx.fillRect(0, 200, 512, 60);
-                ctx.fillStyle = '#111111';
-                for(let x=-60; x<512; x+=60) {
-                    ctx.beginPath(); ctx.moveTo(x, 260); ctx.lineTo(x+30, 260);
-                    ctx.lineTo(x+60, 200); ctx.lineTo(x+30, 200); ctx.fill();
-                }
-            } else if (type === 'floor1') {
-                ctx.fillStyle = '#7a6c52'; ctx.fillRect(0,0,512,512);
-                for(let i=0; i<80000; i++) {
-                    ctx.fillStyle = Math.random() > 0.5 ? `rgba(0,0,0,${Math.random()*0.12})` : `rgba(255,255,255,${Math.random()*0.04})`;
-                    ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
-                }
-                ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 2; ctx.strokeRect(0, 0, 512, 512);
-            } else if (type === 'floor2') {
-                ctx.fillStyle = '#222222'; ctx.fillRect(0,0,512,512);
-                for(let i=0; i<50000; i++) {
-                    ctx.fillStyle = `rgba(255,255,255,${Math.random()*0.04})`;
-                    ctx.fillRect(Math.random()*512, Math.random()*512, 2, 2);
-                }
-                ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fillRect(240, 50, 32, 412);
-            } else if (type === 'ceil1') {
-                ctx.fillStyle = '#dddddd'; ctx.fillRect(0,0,512,512);
-                for(let i=0; i<10000; i++) {
-                    ctx.fillStyle = `rgba(0,0,0,0.1)`;
-                    ctx.beginPath(); ctx.arc(Math.random()*512, Math.random()*512, 1, 0, Math.PI*2); ctx.fill();
-                }
-                ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 5; ctx.strokeRect(0, 0, 512, 512);
-            } else if (type === 'ceil2') {
-                ctx.fillStyle = '#1a1a1a'; ctx.fillRect(0,0,512,512);
-                ctx.fillStyle = '#333333'; ctx.fillRect(100, 0, 40, 512);
-                ctx.fillStyle = '#442222'; ctx.fillRect(350, 0, 20, 512);
-                for(let i=0; i<20000; i++) {
-                    ctx.fillStyle = `rgba(0,0,0,${Math.random()*0.3})`;
-                    ctx.fillRect(Math.random()*512, Math.random()*512, 4, 4);
-                }
-            }
-            const tex = new THREE.CanvasTexture(cvs); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(3, 3);
-            return tex;
-        }
-
-        function setRandomExitChunk() {
-            do { exitChunkX = Math.floor(Math.random()*5)-2; exitChunkZ = Math.floor(Math.random()*5)-2; }
-            while (exitChunkX === 0 && exitChunkZ === 0);
-        }
-
-        function createGunModel() {
-            const gunGroup = new THREE.Group();
-           
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x333333, metalness: 0.8, roughness: 0.3 });
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 0.35), bodyMat);
-            body.position.set(0, -0.05, -0.1); body.castShadow = true; gunGroup.add(body);
-           
-            const barrelMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.9, roughness: 0.2 });
-            const barrelGeo = new THREE.CylinderGeometry(0.03, 0.03, 0.3, 16); barrelGeo.rotateX(Math.PI / 2);
-            const barrel = new THREE.Mesh(barrelGeo, barrelMat);
-            barrel.position.set(0, 0.02, -0.35); barrel.castShadow = true; gunGroup.add(barrel);
-
-            const coreMat = new THREE.MeshStandardMaterial({ color: 0x00ffff, emissive: 0x00ffff, emissiveIntensity: 0.5 });
-            const coreGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.25, 8); coreGeo.rotateX(Math.PI / 2);
-            const core = new THREE.Mesh(coreGeo, coreMat);
-            core.position.set(0, 0.02, -0.35); gunGroup.add(core);
-
-            const scopeGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.15, 16); scopeGeo.rotateX(Math.PI / 2);
-            const scope = new THREE.Mesh(scopeGeo, bodyMat);
-            scope.position.set(0, 0.07, -0.1); gunGroup.add(scope);
-
-            gunGroup.position.copy(GUN_BASE_POS);
+        function createGun() {
+            gunGroup = new THREE.Group();
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.5), new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 }));
+            gunGroup.add(body);
+            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4), new THREE.MeshStandardMaterial({ color: 0x050505 }));
+            barrel.rotation.x = Math.PI / 2; barrel.position.z = -0.3;
+            gunGroup.add(barrel);
+            const grip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.1), new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
+            grip.position.y = -0.15; grip.position.z = 0.15; grip.rotation.x = -0.2;
+            gunGroup.add(grip);
+            muzzleFlash = new THREE.PointLight(0xffaa00, 0, 5);
+            muzzleFlash.position.z = -0.6;
+            gunGroup.add(muzzleFlash);
+            const flashMesh = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0 }));
+            flashMesh.position.z = -0.6;
+            gunGroup.add(flashMesh);
+            muzzleFlash.mesh = flashMesh;
+            gunGroup.position.set(0.3, -0.3, -0.5);
             camera.add(gunGroup);
-            gunMesh = gunGroup;
         }
 
-        function setupLevelEnvironment() {
-            scene.children = scene.children.filter(child => !(child instanceof THREE.AmbientLight || child instanceof THREE.SpotLight));
-            const levelUI = document.getElementById('level-status');
+        function handleKey(code, val) {
+            if(code === 'KeyW') keys.w = val;
+            if(code === 'KeyS') keys.s = val;
+            if(code === 'KeyA') keys.a = val;
+            if(code === 'KeyD') keys.d = val;
+            if(code === 'ShiftLeft') keys.shift = val;
+        }
 
-            flashlight = new THREE.SpotLight(0xffffff, 1.5, 45, Math.PI/5, 0.5, 1);
-            flashlight.position.set(0, 0, 0); flashlight.target.position.set(0, 0, -1);
-            flashlight.castShadow = true; flashlight.shadow.mapSize.width = 512; flashlight.shadow.mapSize.height = 512;
-            flashlight.shadow.bias = -0.001;
-            camera.add(flashlight); camera.add(flashlight.target);
-
-            if (currentLevel === 1) {
-                scene.background = new THREE.Color(0x0a0a08); scene.fog = new THREE.FogExp2(0x0a0a08, 0.035);
-                scene.add(new THREE.AmbientLight(0xffcc88, 0.25));
-                matWall.map = photoWallTex; matWall.color.setHex(0xffdd88);
-                matFloor.map = createRealisticTex('floor1'); matCeil.map = createRealisticTex('ceil1');
-                levelUI.innerText = "CH.1 - THE LOBBY"; numEntities = 4;
-            } else if (currentLevel === 2) {
-                scene.background = new THREE.Color(0x050505); scene.fog = new THREE.FogExp2(0x050505, 0.045);
-                scene.add(new THREE.AmbientLight(0x88aaff, 0.2));
-                matWall.map = createRealisticTex('wall2'); matWall.color.setHex(0xffffff);
-                matFloor.map = createRealisticTex('floor2'); matCeil.map = createRealisticTex('ceil2');
-                levelUI.innerText = "CH.2 - UNDERGROUND PARKING"; numEntities = 7;
-                flashlight.color.setHex(0xeef5ff);
+        function generateMaze(width, height, seed) {
+            let random = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
+            let maze = Array(height).fill().map(() => Array(width).fill(1));
+            let stack = [[1, 1]]; maze[1][1] = 0;
+            while (stack.length > 0) {
+                let [x, y] = stack[stack.length - 1];
+                let dirs = [[0, 2], [0, -2], [2, 0], [-2, 0]].filter(([dx, dy]) => {
+                    let nx = x + dx, ny = y + dy;
+                    return nx > 0 && nx < width - 1 && ny > 0 && ny < height - 1 && maze[ny][nx] === 1;
+                });
+                if (dirs.length > 0) {
+                    let [dx, dy] = dirs[Math.floor(random() * dirs.length)];
+                    maze[y + dy / 2][x + dx / 2] = 0; maze[y + dy][x + dx] = 0; stack.push([x + dx, y + dy]);
+                } else stack.pop();
             }
-            matWall.needsUpdate = true; matFloor.needsUpdate = true; matCeil.needsUpdate = true;
+            return maze;
         }
 
-        function spawnEntities() {
-            entities.forEach(ent => scene.remove(ent.mesh));
+        function buildChunk(cx, cz) {
+            const key = `${cx},${cz}`;
+            if (chunks.has(key)) return;
+            const group = new THREE.Group();
+            const mazeSize = GRID_RES;
+            const cellSize = CHUNK_SIZE / mazeSize;
+            const maze = generateMaze(mazeSize + 1, mazeSize + 1, Math.abs(cx * 13 + cz * 37 + currentLevel));
+            const wallGeo = new THREE.BoxGeometry(cellSize + 0.1, 4, cellSize + 0.1);
+            for (let y = 0; y <= mazeSize; y++) {
+                for (let x = 0; x <= mazeSize; x++) {
+                    const px = cx * CHUNK_SIZE + x * cellSize;
+                    const pz = cz * CHUNK_SIZE + y * cellSize;
+                    if (Math.abs(px - 2) < 4 && Math.abs(pz - 2) < 4) continue;
+                    if (maze[y][x] === 1) {
+                        const wall = new THREE.Mesh(wallGeo, matWall);
+                        wall.position.set(px, 2, pz);
+                        group.add(wall); colliders.push(wall);
+                    }
+                }
+            }
+            const floor = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE), matFloor);
+            floor.rotation.x = -Math.PI/2;
+            floor.position.set(cx * CHUNK_SIZE + CHUNK_SIZE/2, 0, cz * CHUNK_SIZE + CHUNK_SIZE/2);
+            group.add(floor);
+            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE), matCeil);
+            ceil.rotation.x = Math.PI/2;
+            ceil.position.set(cx * CHUNK_SIZE + CHUNK_SIZE/2, 4, cz * CHUNK_SIZE + CHUNK_SIZE/2);
+            group.add(ceil);
+
+            if (Math.random() > 0.8) {
+                const item = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+                item.position.set(cx * CHUNK_SIZE + Math.random() * CHUNK_SIZE, 0.5, cz * CHUNK_SIZE + Math.random() * CHUNK_SIZE);
+                pickups.push(item); group.add(item);
+            }
+
+            // Exit Spawning (2 Exits per Level)
+            if (Math.random() > 0.93 && exits.length < 2) { 
+                const exit = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 }));
+                exit.position.set(cx * CHUNK_SIZE + CHUNK_SIZE/2, 1.5, cz * CHUNK_SIZE + CHUNK_SIZE/2);
+                const light = new THREE.PointLight(0xffffff, 2, 10);
+                exit.add(light);
+                exits.push(exit); group.add(exit);
+            }
+
+            scene.add(group);
+            chunks.set(key, group);
+        }
+
+        function spawnLevel() {
+            document.getElementById('level-status').innerText = `LEVEL: ${currentLevel} / 3`;
+            entities.forEach(e => scene.remove(e.mesh));
             entities = [];
-            for(let i=0; i<numEntities; i++) {
-                entities.push(createEntityMesh(Math.floor(Math.random() * 3)));
+            
+            // 엔티티 수를 1마리로 고정
+            for(let i=0; i < 1; i++) {
+                const entGroup = new THREE.Group();
+                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 2.5), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+                entGroup.add(body);
+                const head = new THREE.Mesh(new THREE.SphereGeometry(0.35), new THREE.MeshBasicMaterial({ color: 0x000000 }));
+                head.position.y = 1.4; entGroup.add(head);
+                // 플레이어로부터 일정 거리 이상 떨어진 곳에서 스폰
+                entGroup.position.set(20 + Math.random()*80, 1.25, 20 + Math.random()*80);
+                scene.add(entGroup);
+                entities.push({ mesh: entGroup, speed: 4.5 + (currentLevel * 1.0) }); // 속도는 단계마다 증가
             }
+        }
+
+        function shoot() {
+            if(!isLocked || ammo <= 0 || isGameOver) return;
+            recoilAmount = 0.15; ammo--;
+            document.getElementById('ammo-count').innerText = ammo;
+            playShootSound();
+            muzzleFlash.intensity = 5; muzzleFlash.mesh.material.opacity = 0.8;
+            setTimeout(() => { muzzleFlash.intensity = 0; muzzleFlash.mesh.material.opacity = 0; }, 50);
+            const ray = new THREE.Raycaster();
+            ray.setFromCamera(new THREE.Vector2(0,0), camera);
+            const hits = ray.intersectObjects(entities.map(e => e.mesh), true);
+            if(hits.length > 0) {
+                let hitObj = hits[0].object;
+                while(hitObj.parent && !entities.find(e => e.mesh === hitObj)) hitObj = hitObj.parent;
+                const ent = entities.find(e => e.mesh === hitObj);
+                if(ent) {
+                    // 퇴치 시 아주 멀리 텔레포트
+                    ent.mesh.position.set(100 + Math.random()*100, 1.25, 100 + Math.random()*100);
+                    showMessage("엔티티 퇴치! 잠시 동안 안전합니다.");
+                }
+            }
+        }
+
+        function showMessage(txt) {
+            const box = document.getElementById('message-box');
+            box.innerText = txt; box.style.opacity = 1;
+            setTimeout(() => box.style.opacity = 0, 2000);
         }
 
         function startNextLevel() {
+            if (currentLevel >= 3) {
+                document.getElementById('next-level-screen').classList.add('hidden');
+                document.getElementById('win-screen').classList.remove('hidden');
+                return;
+            }
             currentLevel++;
-            chunks.forEach(chunk => scene.remove(chunk.group));
-            chunks.clear(); colliders = []; exits = []; pickups = []; currentChunk = { x: -999, z: -999 };
-            camera.position.set(0, 1.7, 0); velocity.set(0, 0, 0); yaw = 0; pitch = 0; camera.rotation.set(0,0,0);
-           
-            setRandomExitChunk(); setupLevelEnvironment(); spawnEntities();
-            isGameOver = false;
-
-            window.focus();
-            const canvas = renderer.domElement;
-            try {
-                canvas.requestPointerLock = canvas.requestPointerLock || canvas.mozRequestPointerLock || document.body.requestPointerLock;
-                if(canvas.requestPointerLock) canvas.requestPointerLock();
-            } catch(e) {}
-            isLocked = true;
+            chunks.forEach(c => scene.remove(c));
+            chunks.clear();
+            colliders = []; exits = []; pickups = [];
+            camera.position.set(2, 1.7, 2);
+            spawnLevel();
             document.getElementById('next-level-screen').classList.add('hidden');
+            renderer.domElement.requestPointerLock();
+            isGameOver = false;
         }
 
-        function showMessage(text) {
-            msgBox.innerText = text; msgBox.style.opacity = 1;
-            clearTimeout(msgTimeout); msgTimeout = setTimeout(() => { msgBox.style.opacity = 0; }, 2000);
-        }
-
-        // --- 사격 및 투사체 ---
-        function onMouseClick(e) {
-            if(!isLocked || isGameOver || ammo <= 0) return;
-            if(e.button !== 0) return;
-
-            ammo--; ammoUI.innerText = ammo;
-
-            if(gunMesh) {
-                gunMesh.position.z = GUN_BASE_POS.z + 0.15;
-                gunMesh.rotation.x = 0.15;
-                swayY -= 0.1;
+        function checkCollision(pos) {
+            const radius = 0.4;
+            for(let wall of colliders) {
+                const box = new THREE.Box3().setFromObject(wall);
+                const closest = new THREE.Vector3().copy(pos).clamp(box.min, box.max);
+                if(pos.distanceTo(closest) < radius) return true;
             }
-
-            raycaster.setFromCamera(new THREE.Vector2(0, 0), camera);
-            const dir = raycaster.ray.direction.clone();
-           
-            // 화면 정중앙(조준점)에서 정확히 발사되도록 X, Y 위치를 0으로 맞춤
-            const startPos = new THREE.Vector3(0, 0, -1.0).applyMatrix4(camera.matrixWorld);
-
-            // 레이저 빔 (정중앙에서 날아가므로 살짝 얇고 날렵하게 조정)
-            const laserGeo = new THREE.CylinderGeometry(0.03, 0.03, 8.0, 8);
-            laserGeo.rotateX(Math.PI / 2);
-            const projMesh = new THREE.Mesh(laserGeo, new THREE.MeshBasicMaterial({ color: 0x00ffff }));
-           
-            projMesh.position.copy(startPos);
-            projMesh.lookAt(startPos.clone().add(dir));
-            scene.add(projMesh);
-           
-            projMesh.add(new THREE.PointLight(0x00ffff, 2.0, 10));
-
-            // 속도를 적당히 늦춰서 날아가는게 눈에 보이게 설정
-            projectiles.push({ mesh: projMesh, dir: dir, speed: 70, life: 1.5 });
-           
-            const flash = new THREE.PointLight(0x00ffff, 3, 15); flash.position.copy(startPos); scene.add(flash);
-            setTimeout(() => { scene.remove(flash); }, 50);
-        }
-
-        function respawnEntity(ent) {
-            const angle = Math.random() * Math.PI * 2; const rDist = 40 + Math.random() * 30;
-            ent.mesh.position.set(camera.position.x + Math.sin(angle) * rDist, 1.5, camera.position.z + Math.cos(angle) * rDist);
-            ent.state = 'wander';
-        }
-
-        function manageProjectiles(dt) {
-            for (let i = projectiles.length - 1; i >= 0; i--) {
-                let p = projectiles[i]; p.life -= dt;
-                const moveDist = p.speed * dt; const oldPos = p.mesh.position.clone();
-                p.mesh.position.addScaledVector(p.dir, moveDist);
-
-                const pRay = new THREE.Raycaster(oldPos, p.dir, 0, moveDist);
-                let hitSomething = false;
-
-                if (pRay.intersectObjects(colliders).length > 0) hitSomething = true;
-               
-                if (!hitSomething) {
-                    let targetMeshes = [];
-                    entities.forEach(ent => {
-                        ent.mesh.children.forEach(child => {
-                            if(child.isMesh) targetMeshes.push(child);
-                        });
-                    });
-                    const entHits = pRay.intersectObjects(targetMeshes, false);
-                    if (entHits.length > 0) {
-                        hitSomething = true;
-                        const hitEntity = entities.find(e => e.mesh === entHits[0].object.parent);
-                        if (hitEntity) { showMessage("엔티티 무력화 완료."); respawnEntity(hitEntity); }
-                    }
-                }
-               
-                if (hitSomething || p.life <= 0) { scene.remove(p.mesh); projectiles.splice(i, 1); }
-            }
-        }
-
-        function randomSeed(seed) { let x = Math.sin(seed) * 10000; return x - Math.floor(x); }
-
-        function manageChunks() {
-            const cx = Math.floor(camera.position.x / CHUNK_SIZE); const cz = Math.floor(camera.position.z / CHUNK_SIZE);
-            if (cx !== currentChunk.x || cz !== currentChunk.z) {
-                currentChunk.x = cx; currentChunk.z = cz;
-                for (let x = cx - RENDER_DIST; x <= cx + RENDER_DIST; x++) {
-                    for (let z = cz - RENDER_DIST; z <= cz + RENDER_DIST; z++) {
-                        const key = `${x},${z}`; if (!chunks.has(key)) buildChunk(x, z, key);
-                    }
-                }
-                for (let [key, chunk] of chunks.entries()) {
-                    const [kx, kz] = key.split(',').map(Number);
-                    if (Math.abs(kx - cx) > RENDER_DIST || Math.abs(kz - cz) > RENDER_DIST) {
-                        scene.remove(chunk.group); colliders = colliders.filter(w => !chunk.walls.includes(w)); chunks.delete(key);
-                    }
-                }
-            }
-        }
-
-        function buildChunk(cx, cz, key) {
-            const group = new THREE.Group(); const walls = []; let seed = cx * 100 + cz;
-            const planeGeo = new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE);
-            const floor = new THREE.Mesh(planeGeo, matFloor); floor.rotation.x = -Math.PI/2; floor.receiveShadow = true;
-            const ceil = new THREE.Mesh(planeGeo, matCeil); ceil.rotation.x = Math.PI/2; ceil.position.y = 4;
-            floor.position.set(cx*CHUNK_SIZE + CHUNK_SIZE/2, 0, cz*CHUNK_SIZE + CHUNK_SIZE/2);
-            ceil.position.set(cx*CHUNK_SIZE + CHUNK_SIZE/2, 4, cz*CHUNK_SIZE + CHUNK_SIZE/2);
-            group.add(floor); group.add(ceil);
-
-            const lightColor = currentLevel === 1 ? 0xffeaaf : 0xccddff;
-            const baseInt = currentLevel === 1 ? 0.7 : 0.8;
-            const light = new THREE.PointLight(lightColor, baseInt, 30);
-            light.position.set(cx*CHUNK_SIZE + CHUNK_SIZE/2, 3.8, cz*CHUNK_SIZE + CHUNK_SIZE/2);
-            light.userData = { baseIntensity: baseInt, seed: Math.random() }; group.add(light);
-
-            if (cx === exitChunkX && cz === exitChunkZ) {
-                const exit = new THREE.Mesh(new THREE.BoxGeometry(3, 4, 3), new THREE.MeshStandardMaterial({ color: 0x00ff00, emissive: 0x005500 }));
-                exit.position.set(cx*CHUNK_SIZE + CHUNK_SIZE/2, 2, cz*CHUNK_SIZE + CHUNK_SIZE/2);
-                exit.castShadow = true; exit.receiveShadow = true;
-                group.add(exit); exits.push(exit);
-                const gLight = new THREE.PointLight(0x00ff00, 1, 15); gLight.position.copy(exit.position); group.add(gLight);
-            }
-
-            if (randomSeed(seed++) < 0.4 && !(cx === 0 && cz === 0)) {
-                const isAmmo = randomSeed(seed++) < 0.7;
-                const itemMat = new THREE.MeshStandardMaterial({ color: isAmmo ? 0x00ffff : 0x00ff00, emissive: isAmmo ? 0x003333 : 0x003300 });
-                const itemMesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.3, 0.3), itemMat);
-                itemMesh.position.set(cx*CHUNK_SIZE + randomSeed(seed++)*CHUNK_SIZE, 1, cz*CHUNK_SIZE + randomSeed(seed++)*CHUNK_SIZE);
-                itemMesh.userData = { type: isAmmo ? 'ammo' : 'stamina' }; itemMesh.castShadow = true;
-                group.add(itemMesh); pickups.push(itemMesh);
-            }
-
-            const wallGeo = new THREE.BoxGeometry(8, 4, 1);
-            const numWalls = Math.floor(randomSeed(seed++) * 7) + 4;
-            for(let i=0; i<numWalls; i++) {
-                if (cx === 0 && cz === 0 && i < 2) continue;
-                const w = new THREE.Mesh(wallGeo, matWall);
-                w.position.set(cx*CHUNK_SIZE + randomSeed(seed++)*CHUNK_SIZE, 2, cz*CHUNK_SIZE + randomSeed(seed++)*CHUNK_SIZE);
-                if (randomSeed(seed++) > 0.5) w.rotation.y = Math.PI/2;
-                w.castShadow = true; w.receiveShadow = true; w.updateMatrixWorld();
-                group.add(w); walls.push(w); colliders.push(w);
-            }
-            scene.add(group); chunks.set(key, { group, walls });
-        }
-
-        function createEntityMesh(type = 0) {
-            const isLevel2 = currentLevel === 2;
-            const matColor = isLevel2 ? 0xff1100 : 0x050505;
-            const mat = new THREE.MeshStandardMaterial({ color: matColor, roughness: 1.0, emissive: isLevel2 ? 0x550000 : 0x000000 });
-            const group = new THREE.Group(); let speedBase = 3.2;
-
-            if (type === 0) {
-                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.1, 3.2), mat); body.castShadow = true; group.add(body);
-                const head = new THREE.Mesh(new THREE.SphereGeometry(0.2), mat); head.position.y = 1.7; head.castShadow = true; group.add(head);
-            } else if (type === 1) {
-                const body = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.4, 0.7), mat); body.position.y = -1.0; body.castShadow = true; group.add(body); speedBase = 4.2;
-            } else if (type === 2) {
-                const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.4, 1), mat); core.position.y = 0.8; core.castShadow = true; group.add(core); speedBase = 2.5;
-            }
-            if (isLevel2) {
-                const glowLight = new THREE.PointLight(matColor, 1.5, 12); glowLight.position.y = 1.0; group.add(glowLight);
-            }
-            group.position.set(999, 1.5, 999); scene.add(group);
-            return { mesh: group, state: 'wander', dir: new THREE.Vector3(1,0,0), speed: speedBase + Math.random(), type: type };
-        }
-
-        function manageEntities(delta) {
-            entities.forEach(ent => {
-                const dist = ent.mesh.position.distanceTo(camera.position);
-                if (dist > 80) { respawnEntity(ent); return; }
-                const dirToMe = new THREE.Vector3().subVectors(camera.position, ent.mesh.position).normalize();
-                raycaster.set(ent.mesh.position, dirToMe);
-                const hits = raycaster.intersectObjects(colliders);
-                let canSee = (hits.length === 0 || hits[0].distance > dist);
-
-                if (dist < 30 && canSee) {
-                    ent.mesh.lookAt(camera.position.x, 1.5, camera.position.z);
-                    ent.mesh.position.addScaledVector(dirToMe, delta * ent.speed * 1.6);
-                } else {
-                    const oldP = ent.mesh.position.clone();
-                    ent.mesh.position.addScaledVector(ent.dir, delta * ent.speed * 0.5);
-                    if (checkWall(ent.mesh.position, 0.6)) {
-                        ent.mesh.position.copy(oldP);
-                        ent.dir.set(Math.random()-0.5, 0, Math.random()-0.5).normalize();
-                        ent.mesh.lookAt(ent.mesh.position.x + ent.dir.x, 1.5, ent.mesh.position.z + ent.dir.z);
-                    }
-                }
-                if (dist < 1.3) { isGameOver = true; document.exitPointerLock(); document.getElementById('game-over-screen').classList.remove('hidden'); }
-            });
-        }
-
-        function managePickups(dt) {
-            pickups = pickups.filter(p => {
-                if (!p.parent) return false;
-                let worldPos = new THREE.Vector3(); p.getWorldPosition(worldPos);
-                if (camera.position.distanceTo(worldPos) < 1.8) {
-                    if (p.userData.type === 'ammo') { ammo += 5; ammoUI.innerText = ammo; showMessage("에너지 +5"); }
-                    else { stamina = 100; showMessage("스태미나 회복!"); }
-                    p.parent.remove(p); return false;
-                }
-                return true;
-            });
-        }
-
-        function setKey(code, val) {
-            if(code==='KeyW' || code==='ArrowUp') keys.w = val;
-            if(code==='KeyS' || code==='ArrowDown') keys.s = val;
-            if(code==='KeyA' || code==='ArrowLeft') keys.a = val;
-            if(code==='KeyD' || code==='ArrowRight') keys.d = val;
-            if(code==='ShiftLeft' || code==='ShiftRight') keys.shift = val;
-        }
-
-        function onMouseMove(e) {
-            if(!isLocked || isGameOver) return;
-            yaw -= e.movementX * 0.002;
-            pitch -= e.movementY * 0.002;
-            pitch = Math.max(-Math.PI/2, Math.min(Math.PI/2, pitch));
-           
-            swayX += e.movementX * 0.0005;
-            swayY += e.movementY * 0.0005;
-        }
-
-        function onResize() { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); }
-        function checkWall(pos, radius) {
-            for(let i=0; i<colliders.length; i++) {
-                const box = new THREE.Box3().setFromObject(colliders[i]);
-                const pt = new THREE.Vector3(); box.clampPoint(pos, pt);
-                if(pos.distanceTo(pt) < radius) return true;
-            } return false;
+            return false;
         }
 
         function animate() {
             requestAnimationFrame(animate);
             if(!isLocked || isGameOver) return;
-            const dt = Math.min(clock.getDelta(), 0.05);
 
-            manageChunks(); managePickups(dt); manageProjectiles(dt);
+            const dt = Math.min(clock.getDelta(), 0.1);
+            const cx = Math.floor(camera.position.x / CHUNK_SIZE);
+            const cz = Math.floor(camera.position.z / CHUNK_SIZE);
+            for(let i=-1; i<=1; i++) for(let j=-1; j<=1; j++) buildChunk(cx+i, cz+j);
 
-            chunks.forEach(chunk => {
-                chunk.group.children.forEach(c => {
-                    if(c.isPointLight && c.userData.baseIntensity) {
-                        if(Math.random() < 0.02) c.intensity = c.userData.baseIntensity * (0.5 + Math.random()*0.5);
-                        else c.intensity += (c.userData.baseIntensity - c.intensity) * 0.1;
-                    }
-                });
+            let isRunning = keys.shift && stamina > 0;
+            let currentSpeed = isRunning ? 9.0 : 5.5;
+            if(isRunning && (keys.w||keys.s||keys.a||keys.d)) stamina -= dt * 30;
+            else stamina = Math.min(100, stamina + dt * 20);
+            
+            const stamCont = document.getElementById('stamina-container');
+            if(stamina < 100) {
+                stamCont.style.display = 'block';
+                document.getElementById('stamina-fill').style.width = stamina + '%';
+            } else stamCont.style.display = 'none';
+
+            const move = new THREE.Vector3();
+            if(keys.w) move.z -= 1; if(keys.s) move.z += 1;
+            if(keys.a) move.x -= 1; if(keys.d) move.x += 1;
+            move.normalize().applyQuaternion(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0)));
+            
+            velocity.copy(move).multiplyScalar(currentSpeed);
+            const nextX = new THREE.Vector3(camera.position.x + velocity.x * dt, camera.position.y, camera.position.z);
+            if(!checkCollision(nextX)) camera.position.x = nextX.x;
+            const nextZ = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z + velocity.z * dt);
+            if(!checkCollision(nextZ)) camera.position.z = nextZ.z;
+
+            camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
+            
+            if(move.length() > 0) {
+                const stepInterval = isRunning ? 0.22 : 0.4;
+                if (Date.now() - lastStepTime > stepInterval * 1000) {
+                    playFootstep(isRunning);
+                    lastStepTime = Date.now();
+                }
+                bobbing += dt * (isRunning ? 16 : 10);
+                camera.position.y = 1.7 + Math.sin(bobbing) * 0.06;
+                gunGroup.position.x = 0.3 + Math.cos(bobbing * 0.5) * 0.015;
+                gunGroup.position.y = -0.3 + Math.sin(bobbing) * 0.02;
+            } else {
+                bobbing += dt * 2.5;
+                gunGroup.position.y = -0.3 + Math.sin(bobbing) * 0.006;
+            }
+
+            gunGroup.position.z = -0.5 + recoilAmount;
+            recoilAmount *= 0.82;
+
+            let closestEntityDist = 100;
+            entities.forEach(ent => {
+                const dist = ent.mesh.position.distanceTo(camera.position);
+                closestEntityDist = Math.min(closestEntityDist, dist);
+                const dir = new THREE.Vector3().subVectors(camera.position, ent.mesh.position).normalize();
+                ent.mesh.position.addScaledVector(dir, ent.speed * dt);
+                ent.mesh.lookAt(camera.position.x, 1.25, camera.position.z);
+                if(dist < 1.3) {
+                    isGameOver = true; document.exitPointerLock();
+                    document.getElementById('game-over-screen').classList.remove('hidden');
+                }
             });
 
-            let isMoving = (keys.w || keys.s || keys.a || keys.d);
-            let isRunning = (keys.shift && isMoving && stamina > 0);
+            if (Math.random() > 0.85) playEntitySound(closestEntityDist);
 
-            if(isRunning) stamina -= dt * 30;
-            else if(stamina < 100) stamina += dt * 10;
-           
-            if (stamina < 100) {
-                staminaUI.style.display = 'block';
-                staminaFill.style.width = Math.max(0, stamina) + '%';
-                staminaFill.style.background = stamina < 15 ? 'red' : '#fff';
-            } else { staminaUI.style.display = 'none'; }
-
-            velocity.x -= velocity.x * 8.0 * dt;
-            velocity.z -= velocity.z * 8.0 * dt;
-
-            direction.z = Number(keys.w) - Number(keys.s);
-            direction.x = Number(keys.d) - Number(keys.a);
-            direction.normalize();
-
-            const spd = isRunning ? 160.0 : 60.0;
-            if(keys.w || keys.s) velocity.z -= direction.z * spd * dt;
-            if(keys.a || keys.d) velocity.x -= direction.x * spd * dt;
-
-            camera.rotation.set(0, 0, 0); camera.rotateY(yaw); camera.rotateX(pitch);
-
-            const cDir = new THREE.Vector3(0,0,-1).applyQuaternion(camera.quaternion); cDir.y=0; cDir.normalize();
-            const cSide = new THREE.Vector3(1,0,0).applyQuaternion(camera.quaternion); cSide.y=0; cSide.normalize();
-
-            const oldPos = camera.position.clone();
-            camera.position.addScaledVector(cDir, -velocity.z * dt);
-            camera.position.addScaledVector(cSide, velocity.x * dt);
-
-            if(checkWall(camera.position, 0.4)) camera.position.copy(oldPos);
-
-            targetFOV = isRunning ? 85 : 70;
-            camera.fov += (targetFOV - camera.fov) * 0.1;
-            camera.updateProjectionMatrix();
-
-            if(isMoving) {
-                bobbing += dt * (isRunning ? 18 : 10);
-                camera.position.y = 1.7 - Math.abs(Math.sin(bobbing)) * (isRunning ? 0.12 : 0.05);
-                camera.position.x += Math.cos(bobbing/2) * (isRunning ? 0.02 : 0.01);
-                idleTime = 0;
-            } else {
-                idleTime += dt * 2;
-                camera.position.y = 1.7 + Math.sin(idleTime) * 0.02;
-            }
-
-            if(gunMesh) {
-                swayX = Math.max(-0.05, Math.min(0.05, swayX));
-                swayY = Math.max(-0.05, Math.min(0.05, swayY));
-               
-                gunMesh.position.lerp(GUN_BASE_POS, 0.1);
-                gunMesh.rotation.x += (0 - gunMesh.rotation.x) * 0.1;
-               
-                gunMesh.rotation.y = -swayX;
-                gunMesh.rotation.z = swayX * 0.5;
-               
-                swayX *= 0.8; swayY *= 0.8;
-               
-                if(isMoving) {
-                    gunMesh.position.y = GUN_BASE_POS.y + Math.sin(bobbing * 2) * 0.01;
-                    gunMesh.position.x = GUN_BASE_POS.x + Math.cos(bobbing) * 0.01;
+            pickups = pickups.filter(p => {
+                if(camera.position.distanceTo(p.position) < 1.8) {
+                    ammo = Math.min(20, ammo + 6);
+                    document.getElementById('ammo-count').innerText = ammo;
+                    p.parent.remove(p); showMessage("배터리 팩 획득"); return false;
                 }
-            }
-
-            manageEntities(dt);
+                return true;
+            });
 
             exits.forEach(ex => {
-                if(camera.position.distanceTo(ex.position) < 3) {
-                    isGameOver = true; document.exitPointerLock();
-                    if (currentLevel === 1) document.getElementById('next-level-screen').classList.remove('hidden');
-                    else document.getElementById('game-win-screen').classList.remove('hidden');
+                if(camera.position.distanceTo(ex.position) < 2.5) {
+                    isGameOver = true;
+                    document.exitPointerLock();
+                    if(currentLevel >= 3) {
+                        document.getElementById('win-screen').classList.remove('hidden');
+                    } else {
+                        document.getElementById('next-level-text').innerText = `Level ${currentLevel} 탈출 성공.`;
+                        document.getElementById('next-level-screen').classList.remove('hidden');
+                    }
                 }
             });
 
             renderer.render(scene, camera);
         }
+
+        window.onresize = () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        };
 
         init();
     </script>
