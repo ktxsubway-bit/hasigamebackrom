@@ -3,519 +3,1338 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>백룸: 리얼리티 (하드코어 미로)</title>
+    <title>3D 서울 버스 프리드라이브 시뮬레이터 (무한 청크 & 리얼 물리)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Noto+Sans+KR:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Courier New', Courier, monospace; user-select: none; }
-        canvas { display: block; }
-       
-        #vhs-overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            pointer-events: none; z-index: 10;
+        body {
+            font-family: 'Noto Sans KR', 'Inter', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            overflow: hidden;
         }
-       
-        .scanlines {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%);
-            background-size: 100% 4px; pointer-events: none;
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
         }
-
-        .vignette {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: radial-gradient(circle at center, rgba(0,0,0,0) 20%, rgba(0,0,0,1) 100%);
-            pointer-events: none;
-        }
-
-        .noise {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0.06;
-            background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="noiseFilter"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="4" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23noiseFilter)"/%3E%3C/svg%3E');
-            pointer-events: none;
-        }
-
-        #ui-layer {
-            position: absolute; top: 30px; left: 30px; color: #fff;
-            pointer-events: none; font-weight: bold; font-size: 1rem;
-            text-shadow: 2px 2px 0px #000; display: flex; flex-direction: column; gap: 10px; z-index: 20;
-        }
-
-        .rec-indicator { display: flex; align-items: center; gap: 10px; color: #ff3333; }
-        .rec-dot {
-            width: 12px; height: 12px; background-color: #ff3333; border-radius: 50%;
-            animation: blink 1s infinite;
-        }
-
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0; } 100% { opacity: 1; } }
-
-        #message-box {
-            position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
-            color: #ffcc00; font-weight: bold; font-size: 1.2rem; text-shadow: 2px 2px 0px #000;
-            pointer-events: none; opacity: 0; transition: opacity 0.3s; z-index: 20;
-        }
-
-        .stamina-bar {
-            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-            width: 250px; height: 4px; background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2); display: none; z-index: 20;
-        }
-        #stamina-fill { width: 100%; height: 100%; background: #eee; transition: width 0.1s; }
-
-        #crosshair {
-            position: absolute; top: 50%; left: 50%; width: 12px; height: 12px;
-            border: 1px solid rgba(255,255,255,0.5); border-radius: 50%;
-            transform: translate(-50%, -50%); pointer-events: none; z-index: 20;
-        }
-
-        .menu-screen {
-            display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            flex-direction: column; justify-content: center; align-items: center;
-            background: #050505; z-index: 100; color: white; text-align: center;
-        }
-
-        .btn {
-            margin-top: 30px; padding: 12px 30px; background: none; color: #fff;
-            border: 1px solid #555; cursor: pointer; transition: 0.2s; 
-            font-family: 'Courier New', Courier, monospace; font-size: 1rem;
-        }
-        .btn:hover { background: #fff; color: #000; }
-
-        .hidden { display: none !important; }
     </style>
 </head>
-<body>
+<body class="bg-slate-950 text-white w-screen h-screen relative">
 
-    <div id="vhs-overlay">
-        <div class="scanlines"></div><div class="vignette"></div><div class="noise"></div>
+    <!-- 로딩 화면 -->
+    <div id="loader" class="absolute inset-0 bg-slate-900 z-50 flex flex-col items-center justify-center transition-opacity duration-1000">
+        <div class="relative flex items-center justify-center mb-8">
+            <div class="w-24 h-24 border-8 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+            <i class="fa-solid fa-bus text-4xl text-blue-400 absolute animate-pulse"></i>
+        </div>
+        <h1 class="text-3xl font-black tracking-wider text-blue-400 mb-2">3D 버스 프리드라이브</h1>
+        <p class="text-slate-400 text-sm animate-pulse mb-6">무한 청크 제네레이터 및 리얼 버스 물리 렌더링 중...</p>
+        <div class="w-64 h-2 bg-slate-800 rounded-full overflow-hidden">
+            <div id="loading-bar" class="w-0 h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-300"></div>
+        </div>
     </div>
 
-    <div id="ui-layer">
-        <div class="rec-indicator"><div class="rec-dot"></div> REC</div>
-        <div id="level-status">LEVEL: 1 / 3</div>
-        <div>BATTERY: <span id="ammo-count">8</span>%</div>
-    </div>
-   
-    <div id="message-box"></div>
-    <div id="crosshair"></div>
-    <div class="stamina-bar" id="stamina-container"><div id="stamina-fill"></div></div>
+    <!-- 메인 시뮬레이터 캔버스 -->
+    <div id="canvas-container" class="w-full h-full absolute inset-0 z-0"></div>
 
-    <div id="start-screen" class="menu-screen">
-        <h1 style="letter-spacing: 8px; font-size: 2.5rem;">THE MAZE</h1>
-        <p style="color: #666; font-size: 0.9rem;">당신은 혼자가 아닙니다. 멈추지 마십시오.<br>(사운드가 포함되어 있습니다)</p>
-        <button class="btn" id="start-btn">연결 시작</button>
+    <!-- 게임 상단 정보 바 -->
+    <div class="absolute top-4 left-4 right-4 z-10 flex flex-wrap gap-3 justify-between items-center pointer-events-none">
+        <!-- 왼쪽: 버스 모델명 및 실시간 주행 타이머/기록 -->
+        <div class="bg-slate-900/80 backdrop-blur-md px-5 py-3 rounded-2xl shadow-2xl border border-slate-700/50 flex items-center gap-4 pointer-events-auto">
+            <div class="flex flex-col">
+                <div class="flex items-center gap-2">
+                    <span id="bus-type-tag" class="px-2 py-0.5 text-xs font-bold rounded bg-blue-600 text-white">서울 140</span>
+                    <h2 class="font-bold text-base text-slate-100">무한 프리 주행</h2>
+                </div>
+                <div class="text-[10px] text-slate-400 mt-0.5">상태: <span class="text-emerald-400 font-semibold">도심 무한 청크 로딩 중</span></div>
+            </div>
+            <div class="h-8 w-[1px] bg-slate-700"></div>
+            <div class="text-center">
+                <div class="text-[10px] text-slate-400">주행 시간</div>
+                <div class="font-extrabold text-lg text-yellow-400" id="drive-time">00:00</div>
+            </div>
+            <div class="h-8 w-[1px] bg-slate-700"></div>
+            <div class="text-center">
+                <div class="text-[10px] text-slate-400">누적 거리</div>
+                <div class="font-extrabold text-lg text-emerald-400" id="drive-distance">0.00 km</div>
+            </div>
+        </div>
+
+        <!-- 중앙: 현재 나침반 및 활성 청크 정보 안내판 -->
+        <div class="bg-slate-900/90 backdrop-blur-md px-6 py-3 rounded-2xl shadow-2xl border border-slate-700/50 text-center min-w-[240px] pointer-events-auto hidden sm:block">
+            <div class="text-[10px] text-indigo-400 tracking-widest font-bold uppercase">DYNAMIC WORLD GENERATOR</div>
+            <div class="font-bold text-base text-white mt-0.5 flex items-center justify-center gap-2" id="compass-direction">
+                <i class="fa-solid fa-compass text-indigo-400 animate-spin" style="animation-duration: 10s;"></i>
+                <span id="active-chunks-count">로딩 청크: 9개 (최적화 작동)</span>
+            </div>
+            <div class="text-[10px] text-slate-400 mt-0.5">멀어진 도심 빌딩과 도로는 실시간 자동 청크 소멸됨</div>
+        </div>
+
+        <!-- 오른쪽: 설정 및 시간대 토글 셋업 -->
+        <div class="flex gap-2 pointer-events-auto">
+            <!-- 날씨/시간대 즉각 스위치 버튼 -->
+            <button id="btn-weather" class="px-3 h-12 bg-slate-900/80 hover:bg-slate-800 active:scale-95 backdrop-blur-md rounded-xl flex items-center gap-2 text-indigo-400 border border-slate-700/50 transition shadow-lg" title="시간대 변경">
+                <i class="fa-solid fa-moon text-lg"></i>
+                <span class="text-xs font-bold text-slate-200" id="weather-text">도심 야경</span>
+            </button>
+            <button id="btn-camera" class="w-12 h-12 bg-slate-900/80 hover:bg-slate-800 backdrop-blur-md rounded-xl flex items-center justify-center text-slate-200 border border-slate-700/50 transition shadow-lg" title="카메라 시점 변경">
+                <i class="fa-solid fa-camera text-lg"></i>
+            </button>
+            <button id="btn-sound" class="w-12 h-12 bg-slate-900/80 hover:bg-slate-800 backdrop-blur-md rounded-xl flex items-center justify-center text-slate-200 border border-slate-700/50 transition shadow-lg" title="음소거 토글">
+                <i class="fa-solid fa-volume-high text-lg"></i>
+            </button>
+            <button id="btn-reset" class="w-12 h-12 bg-slate-900/80 hover:bg-rose-950 backdrop-blur-md rounded-xl flex items-center justify-center text-rose-400 border border-rose-900/30 transition shadow-lg" title="차량 위치 초기화">
+                <i class="fa-solid fa-arrows-rotate text-lg"></i>
+            </button>
+        </div>
     </div>
 
-    <div id="game-over-screen" class="menu-screen hidden">
-        <h1 style="color: #600;">SIGNAL LOST</h1>
-        <button class="btn" onclick="location.reload()">시스템 재부팅</button>
+    <!-- 대시보드 및 컨트롤 패널 (화면 하단) -->
+    <div class="absolute bottom-4 left-4 right-4 z-10 grid grid-cols-12 gap-4 pointer-events-none">
+        
+        <!-- 왼쪽: 속도계 & RPM 대시보드 -->
+        <div class="col-span-12 md:col-span-4 bg-slate-900/80 backdrop-blur-lg p-4 rounded-2xl border border-slate-700/50 shadow-2xl flex items-center justify-around pointer-events-auto">
+            <!-- 가상 속도계 -->
+            <div class="relative w-28 h-28 flex items-center justify-center">
+                <svg class="absolute w-full h-full transform -rotate-90">
+                    <circle cx="56" cy="56" r="48" class="stroke-slate-800" stroke-width="8" fill="transparent"/>
+                    <circle id="speedo-gauge" cx="56" cy="56" r="48" class="stroke-blue-500 transition-all duration-100" stroke-width="8" stroke-dasharray="301.6" stroke-dashoffset="301.6" fill="transparent"/>
+                </svg>
+                <div class="text-center">
+                    <div class="text-3xl font-black text-white tracking-tight" id="speed-value">0</div>
+                    <div class="text-[10px] text-slate-400 uppercase tracking-widest font-semibold">km/h</div>
+                </div>
+            </div>
+            
+            <!-- 상태 인디케이터 -->
+            <div class="flex flex-col gap-2">
+                <div class="flex gap-1.5 justify-center">
+                    <span id="gear-P" class="px-2 py-0.5 text-xs font-bold rounded bg-slate-800 text-slate-600">P</span>
+                    <span id="gear-R" class="px-2 py-0.5 text-xs font-bold rounded bg-slate-800 text-slate-600">R</span>
+                    <span id="gear-N" class="px-2 py-0.5 text-xs font-bold rounded bg-slate-800 text-slate-600">N</span>
+                    <span id="gear-D" class="px-2 py-0.5 text-xs font-bold rounded bg-blue-600 text-white font-black animate-pulse">D</span>
+                </div>
+                
+                <div class="text-center mt-1">
+                    <div class="text-[10px] text-slate-500 font-bold uppercase">엔진 RPM</div>
+                    <div class="w-24 bg-slate-800 h-1.5 rounded-full overflow-hidden mt-1 mx-auto">
+                        <div id="rpm-bar" class="w-1/4 h-full bg-gradient-to-r from-green-500 to-red-500 transition-all duration-75"></div>
+                    </div>
+                </div>
+
+                <div class="flex justify-center gap-3 mt-1">
+                    <span id="light-indicator" class="text-slate-600 text-sm" title="헤드라이트"><i class="fa-solid fa-lightbulb"></i></span>
+                    <span id="door-indicator" class="text-slate-600 text-sm" title="출입문 열림"><i class="fa-solid fa-door-open"></i></span>
+                    <span id="handbrake-indicator" class="text-rose-600 text-sm font-bold" title="핸드브레이크 체결"><i class="fa-solid fa-circle-p"></i></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 중앙: 실시간 프리드라이브 가이드 -->
+        <div class="col-span-12 md:col-span-4 bg-slate-900/80 backdrop-blur-lg p-4 rounded-2xl border border-slate-700/50 shadow-2xl flex flex-col justify-center pointer-events-auto">
+            <div class="flex items-start gap-3">
+                <div class="bg-emerald-600/20 p-2.5 rounded-xl text-emerald-400">
+                    <i id="bus-bell-icon" class="fa-solid fa-compass text-lg"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="font-bold text-sm text-slate-200">청크 로딩 & 묵직한 운전 안내</h3>
+                    <p id="announcement-text" class="text-xs text-slate-400 mt-1 leading-relaxed">
+                        실제 버스(12톤) 무게감이 적용되었습니다. 제동 시 밀리는 현상이 있으니 미리 감속하세요! 전후좌우 무제한으로 달려도 실시간 청크 도로망이 자동 정렬됩니다.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 오른쪽: 버스 하드웨어 제어 제어반 -->
+        <div class="col-span-12 md:col-span-4 bg-slate-900/80 backdrop-blur-lg p-4 rounded-2xl border border-slate-700/50 shadow-2xl flex items-center justify-around gap-2 pointer-events-auto">
+            <!-- 문 열기/닫기 -->
+            <button id="btn-door" class="flex-1 h-14 bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white rounded-xl font-bold flex flex-col items-center justify-center transition shadow-lg">
+                <i class="fa-solid fa-door-open text-base"></i>
+                <span class="text-[10px] mt-1">출입문 (E)</span>
+            </button>
+            
+            <!-- 클락션 -->
+            <button id="btn-horn" class="flex-1 h-14 bg-amber-600 hover:bg-amber-500 active:scale-95 text-white rounded-xl font-bold flex flex-col items-center justify-center transition shadow-lg">
+                <i class="fa-solid fa-bullhorn text-base"></i>
+                <span class="text-[10px] mt-1">클락션 (H)</span>
+            </button>
+
+            <!-- 라이트 토글 -->
+            <button id="btn-light" class="flex-1 h-14 bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 rounded-xl font-bold flex flex-col items-center justify-center transition shadow-lg border border-slate-700">
+                <i class="fa-solid fa-lightbulb text-base"></i>
+                <span class="text-[10px] mt-1">전조등 (L)</span>
+            </button>
+
+            <!-- 기어 컨트롤 토글 -->
+            <button id="btn-gear" class="flex-1 h-14 bg-blue-600 hover:bg-blue-500 active:scale-95 text-white rounded-xl font-bold flex flex-col items-center justify-center transition shadow-lg">
+                <i class="fa-solid fa-gears text-base"></i>
+                <span class="text-[10px] mt-1" id="gear-btn-text">기어 D (G)</span>
+            </button>
+        </div>
     </div>
 
-    <div id="next-level-screen" class="menu-screen hidden">
-        <h1 style="color: #aaa;">노클립(Noclip) 발생...</h1>
-        <p id="next-level-text">더 깊은 곳으로 이동합니다.</p>
-        <button class="btn" id="next-btn">계속</button>
+    <!-- 모바일 운전 제어 장치 (오버레이) -->
+    <div class="absolute bottom-32 left-6 z-10 md:hidden flex flex-col gap-2 pointer-events-none">
+        <div class="pointer-events-auto flex gap-2">
+            <button id="btn-steer-left" class="w-14 h-14 rounded-full bg-slate-800/80 active:bg-blue-600 text-white font-black text-xl flex items-center justify-center border border-slate-600/40 shadow-xl transition active:scale-90">
+                <i class="fa-solid fa-caret-left"></i>
+            </button>
+            <button id="btn-steer-right" class="w-14 h-14 rounded-full bg-slate-800/80 active:bg-blue-600 text-white font-black text-xl flex items-center justify-center border border-slate-600/40 shadow-xl transition active:scale-90">
+                <i class="fa-solid fa-caret-right"></i>
+            </button>
+        </div>
     </div>
 
-    <div id="win-screen" class="menu-screen hidden">
-        <h1 style="color: #0f0;">YOU ESCAPED</h1>
-        <p>현실로 돌아왔습니다. 하지만 정말로 끝일까요?</p>
-        <button class="btn" onclick="location.reload()">다시 시작</button>
+    <div class="absolute bottom-32 right-6 z-10 md:hidden flex flex-col gap-4 pointer-events-none">
+        <div class="pointer-events-auto flex gap-3">
+            <!-- 브레이크 페달 -->
+            <button id="btn-pedal-brake" class="w-14 h-20 rounded-xl bg-red-800/80 active:bg-red-600 border border-red-500/30 flex flex-col items-center justify-center font-bold text-white text-xs shadow-xl transition active:scale-95">
+                <div class="w-6 h-10 border-2 border-white/20 rounded-sm mb-1 bg-slate-900/50"></div>
+                <span>제동</span>
+            </button>
+            <!-- 가속 페달 -->
+            <button id="btn-pedal-gas" class="w-14 h-24 rounded-xl bg-green-800/80 active:bg-green-600 border border-green-500/30 flex flex-col items-center justify-center font-bold text-white text-xs shadow-xl transition active:scale-95">
+                <div class="w-6 h-14 border-2 border-white/20 rounded-sm mb-1 bg-slate-900/50"></div>
+                <span>가속</span>
+            </button>
+        </div>
     </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- 버스 차종 선택 모달 -->
+    <div id="bus-selection-modal" class="absolute inset-0 bg-slate-950/90 z-40 flex items-center justify-center backdrop-blur-md transition-opacity duration-500">
+        <div class="bg-slate-900 border border-slate-700/50 p-8 rounded-3xl shadow-2xl max-w-lg w-full text-center mx-4">
+            <h2 class="text-2xl font-black text-white mb-1"><i class="fa-solid fa-bus text-blue-500 mr-2"></i>운행 차량 및 디자인 선택</h2>
+            <p class="text-sm text-slate-400 mb-6">원하는 도색의 버스를 선택하여 드라이브를 시작하세요.</p>
+            
+            <div class="grid grid-cols-2 gap-4 mb-6">
+                <!-- 파랑 서울 간선버스 -->
+                <button id="btn-select-blue" class="group p-5 bg-slate-800/50 border-2 border-blue-500 rounded-2xl transition flex flex-col items-center">
+                    <div class="w-24 h-12 bg-blue-600 rounded-lg flex items-center justify-center text-white font-extrabold text-sm shadow-md mb-3 group-hover:scale-105 transition-transform">
+                        SEOUL 140
+                    </div>
+                    <span class="font-bold text-slate-100 text-blue-400">파란 버스</span>
+                    <span class="text-xs text-slate-500 mt-1">대형 차량 • 블루 실버 컬러</span>
+                </button>
+                
+                <!-- 초록 서울 지선버스 -->
+                <button id="btn-select-green" class="group p-5 bg-slate-800/50 border-2 border-transparent hover:border-emerald-500/50 rounded-2xl transition flex flex-col items-center">
+                    <div class="w-24 h-12 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-extrabold text-sm shadow-md mb-3 group-hover:scale-105 transition-transform">
+                        SEOUL 7016
+                    </div>
+                    <span class="font-bold text-slate-100 group-hover:text-emerald-400">초록 버스</span>
+                    <span class="text-xs text-slate-500 mt-1">도심 차량 • 그린 에코 컬러</span>
+                </button>
+            </div>
+            
+            <button id="btn-start-game" class="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold py-3.5 rounded-xl shadow-lg transition transform hover:-translate-y-0.5">
+                프리 드라이브 시작하기
+            </button>
+        </div>
+    </div>
 
     <script>
-        // --- Sound System ---
-        let audioCtx;
-        function initAudio() {
-            if (audioCtx) return;
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
+        // 전역 시뮬레이터 상태 객체
+        const Game = {
+            // Three.js 인프라
+            scene: null,
+            camera: null,
+            renderer: null,
+            clock: new THREE.Clock(),
 
-        function playFootstep(isSprinting) {
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(60, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(isSprinting ? 0.3 : 0.15, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.1);
-        }
+            // 버스 3D 외형 정보 및 묵직한 무게감 물리 튜닝
+            bus: null,
+            busBodyMesh: null, // 서스펜션 반응(피칭, 롤링) 연출을 위한 섀시 전용 그룹
+            busColor: 'blue',
+            busPhysics: {
+                x: 0,
+                z: 0,
+                rotation: 0,
+                speed: 0,
+                maxSpeed: 0.38,        // 12톤 버스에 부합하게 시뮬레이션 속도 하향 (최대시속 약 80km 상정)
+                maxReverseSpeed: -0.12,
+                acceleration: 0.0016,   // 묵직한 가속 반응 (W 길게 눌러야 출발)
+                deceleration: 0.003,   // 매우 묵직하고 밀리는 제동력
+                friction: 0.0005,      // 자연 공기저항 및 롤링 브레이크 저항
+                steerAngle: 0,
+                maxSteer: 0.024,       // 긴 축간거리를 반영하여 최대 조향 한계 축소 (크게 돌아야함)
+                steerSpeed: 0.0006,    // 서서히 꺾이는 유압 핸들 조향감
+                wheelBase: 6,
+                gear: 'D', 
+                handbrake: true, 
+                lightsOn: false,
+                doorOpen: false,
+                wheelRotation: 0,
+                frontWheels: [],
+                
+                // 관성 피칭 & 보디롤 애니메이션용 변수
+                currentPitch: 0,
+                targetPitch: 0,
+                currentRoll: 0,
+                targetRoll: 0
+            },
 
-        function playEntitySound(distance) {
-            if (!audioCtx || distance > 15) return;
-            const intensity = Math.max(0, 1 - (distance / 15));
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(50 + (Math.random() * 100), audioCtx.currentTime);
-            gain.gain.setValueAtTime(intensity * 0.1, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.2);
-        }
+            // 무한 절차적 청크 시스템 데이터
+            chunkSize: 220,             // 개별 청크 가로세로 폭 (220m)
+            chunks: {},                // 현재 로딩된 청크 딕셔너리 {"gx_gz": chunkObject}
+            lastGx: null,
+            lastGz: null,
+            visibleRadius: 1,          // 3x3 (플레이어 중심 청크와 그 주변 8개 청크만 유지 및 로딩제한)
+            materials: {},             // 재질 공유 오브젝트 (메모리 절약 최적화 필수)
 
-        function playShootSound() {
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = 'triangle';
-            osc.frequency.setValueAtTime(150, audioCtx.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(40, audioCtx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.2);
-        }
+            // 조작 상태
+            keys: {
+                w: false,
+                s: false,
+                a: false,
+                d: false
+            },
 
-        // --- Core Variables ---
-        let scene, camera, renderer, clock;
-        let isLocked = false, isGameOver = false;
-        let keys = { w: false, a: false, s: false, d: false, shift: false };
-        let velocity = new THREE.Vector3();
-        let yaw = 0, pitch = 0;
-        let bobbing = 0, lastStepTime = 0;
+            mileage: 0,
+            driveTime: 0,
+            timeOfDay: 'night', 
 
-        let stamina = 100, ammo = 8;
-        const CHUNK_SIZE = 40; 
-        const GRID_RES = 12;   
-        const chunks = new Map();
-        let colliders = [], exits = [], pickups = [];
-        let entities = [];
-        
-        let currentLevel = 1;
-        let matWall, matFloor, matCeil, flashlight;
+            ambientLight: null,
+            dirLight: null,
 
-        let gunGroup, muzzleFlash;
-        let recoilAmount = 0;
-
-        function init() {
-            scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x000000, 0.08); 
-
-            renderer = new THREE.WebGLRenderer({ antialias: false });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio > 1 ? 1.5 : 1);
-            document.body.appendChild(renderer.domElement);
-
-            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 100);
-            camera.position.set(2, 1.7, 2); 
-            scene.add(camera);
-
-            clock = new THREE.Clock();
-
-            matWall = new THREE.MeshStandardMaterial({ color: 0x998855, roughness: 1 });
-            matFloor = new THREE.MeshStandardMaterial({ color: 0x443322, roughness: 0.8 });
-            matCeil = new THREE.MeshStandardMaterial({ color: 0x777777, roughness: 1 });
-
-            flashlight = new THREE.SpotLight(0xffffff, 2.8, 38, Math.PI/3, 0.7, 1.5);
-            camera.add(flashlight);
-            camera.add(flashlight.target);
-            flashlight.target.position.set(0,0,-1);
-
-            scene.add(new THREE.AmbientLight(0x1a1a1a, 0.18));
-
-            createGun();
-
-            document.addEventListener('keydown', (e) => handleKey(e.code, true));
-            document.addEventListener('keyup', (e) => handleKey(e.code, false));
-            document.addEventListener('mousemove', (e) => {
-                if(!isLocked) return;
-                yaw -= e.movementX * 0.002;
-                pitch -= e.movementY * 0.002;
-                pitch = Math.max(-1.5, Math.min(1.5, pitch));
-            });
-            document.addEventListener('mousedown', shoot);
+            cameraMode: 'chase', 
+            soundEnabled: true,
+            audioContext: null,
+            engineOscillator: null,
+            engineGain: null,
             
-            document.getElementById('start-btn').onclick = () => {
-                initAudio();
-                renderer.domElement.requestPointerLock();
-                document.getElementById('start-screen').classList.add('hidden');
+            colliders: [], // 청크 로딩 및 해제 시 실시간 가비지 컬렉팅 되는 활성 충돌 박스 그룹
+            busBoundBox: null
+        };
+
+        // 로딩 바 애니메이션 제어
+        let progress = 0;
+        const progressInterval = setInterval(() => {
+            progress += Math.random() * 25;
+            if (progress >= 100) {
+                progress = 100;
+                clearInterval(progressInterval);
+                setTimeout(() => {
+                    document.getElementById('loader').classList.add('opacity-0');
+                    setTimeout(() => {
+                        document.getElementById('loader').style.display = 'none';
+                        document.getElementById('bus-selection-modal').classList.remove('hidden');
+                        setupSelectionModal(); 
+                    }, 1000);
+                }, 500);
+            }
+            document.getElementById('loading-bar').style.width = `${progress}%`;
+        }, 100);
+
+        let selectedBusColor = 'blue';
+
+        function setupSelectionModal() {
+            const blueBtn = document.getElementById('btn-select-blue');
+            const greenBtn = document.getElementById('btn-select-green');
+            const startBtn = document.getElementById('btn-start-game');
+
+            blueBtn.addEventListener('click', () => {
+                selectedBusColor = 'blue';
+                blueBtn.className = "group p-5 bg-slate-800/50 border-2 border-blue-500 rounded-2xl transition flex flex-col items-center";
+                blueBtn.querySelector('span').className = "font-bold text-slate-100 text-blue-400";
+                
+                greenBtn.className = "group p-5 bg-slate-800/50 border-2 border-transparent hover:border-emerald-500/50 rounded-2xl transition flex flex-col items-center";
+                greenBtn.querySelector('span').className = "font-bold text-slate-100 group-hover:text-emerald-400";
+            });
+
+            greenBtn.addEventListener('click', () => {
+                selectedBusColor = 'green';
+                greenBtn.className = "group p-5 bg-slate-800/50 border-2 border-emerald-500 rounded-2xl transition flex flex-col items-center";
+                greenBtn.querySelector('span').className = "font-bold text-slate-100 text-emerald-400";
+                
+                blueBtn.className = "group p-5 bg-slate-800/50 border-2 border-transparent hover:border-blue-500/50 rounded-2xl transition flex flex-col items-center";
+                blueBtn.querySelector('span').className = "font-bold text-slate-100 group-hover:text-blue-400";
+            });
+
+            startBtn.addEventListener('click', () => {
+                selectBusType(selectedBusColor);
+            });
+        }
+
+        function selectBusType(color) {
+            Game.busColor = color;
+            const tag = document.getElementById('bus-type-tag');
+            if (color === 'blue') {
+                tag.textContent = '서울 140';
+                tag.className = 'px-2 py-0.5 text-xs font-bold rounded bg-blue-600 text-white';
+            } else {
+                tag.textContent = '서울 7016';
+                tag.className = 'px-2 py-0.5 text-xs font-bold rounded bg-emerald-600 text-white';
+            }
+            document.getElementById('bus-selection-modal').classList.add('opacity-0');
+            setTimeout(() => {
+                document.getElementById('bus-selection-modal').style.display = 'none';
+                initGame();
+            }, 500);
+        }
+
+        function initAudio() {
+            if (!Game.soundEnabled) return;
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                Game.audioContext = new AudioContext();
+
+                Game.engineOscillator = Game.audioContext.createOscillator();
+                Game.engineOscillator.type = 'sawtooth';
+                Game.engineOscillator.frequency.value = 35; // 저속 RPM에 부합하게 기본 피치 하향 조정 (디젤 엔진 소리)
+
+                const filter = Game.audioContext.createBiquadFilter();
+                filter.type = 'lowpass';
+                filter.frequency.value = 130;
+
+                Game.engineGain = Game.audioContext.createGain();
+                Game.engineGain.gain.value = 0.08; 
+
+                Game.engineOscillator.connect(filter);
+                filter.connect(Game.engineGain);
+                Game.engineGain.connect(Game.audioContext.destination);
+
+                Game.engineOscillator.start(0);
+            } catch (e) {
+                console.warn("오디오 초기화 오류:", e);
+            }
+        }
+
+        function updateEngineSound() {
+            if (!Game.audioContext || !Game.soundEnabled) return;
+            
+            const speedRatio = Math.abs(Game.busPhysics.speed) / Game.busPhysics.maxSpeed;
+            const targetFreq = 32 + (speedRatio * 85); // 묵직하게 소리 상승
+            const targetGain = Game.busPhysics.handbrake ? 0.03 : (0.05 + (speedRatio * 0.08));
+
+            Game.engineOscillator.frequency.setTargetAtTime(targetFreq, Game.audioContext.currentTime, 0.15);
+            Game.engineGain.gain.setTargetAtTime(targetGain, Game.audioContext.currentTime, 0.2);
+        }
+
+        function playHorn() {
+            if (!Game.soundEnabled) return;
+            try {
+                const ctx = Game.audioContext || new (window.AudioContext || window.webkitAudioContext)();
+                if (!Game.audioContext) Game.audioContext = ctx;
+                
+                const osc1 = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                osc1.type = 'sawtooth';
+                osc1.frequency.value = 360; 
+                osc2.type = 'triangle';
+                osc2.frequency.value = 372; 
+
+                gainNode.gain.setValueAtTime(0, ctx.currentTime);
+                gainNode.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.05);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.7);
+
+                osc1.connect(gainNode);
+                osc2.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                osc1.start();
+                osc2.start();
+
+                osc1.stop(ctx.currentTime + 0.75);
+                osc2.stop(ctx.currentTime + 0.75);
+            } catch(e) {}
+        }
+
+        function createBuildingTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(0, 0, 128, 128);
+
+            for (let y = 10; y < 128; y += 20) {
+                for (let x = 10; x < 128; x += 20) {
+                    if (Math.random() > 0.4) {
+                        ctx.fillStyle = Math.random() > 0.5 ? '#fef08a' : '#fed7aa'; 
+                    } else {
+                        ctx.fillStyle = '#090d16'; 
+                    }
+                    ctx.fillRect(x, y, 10, 12);
+                }
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createRoadTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#1e293b'; 
+            ctx.fillRect(0, 0, 128, 128);
+
+            for (let i = 0; i < 300; i++) {
+                const size = Math.random() * 1.5;
+                ctx.fillStyle = `rgba(255, 255, 255, ${Math.random() * 0.04})`;
+                ctx.fillRect(Math.random() * 128, Math.random() * 128, size, size);
+            }
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function initGame() {
+            const container = document.getElementById('canvas-container');
+            
+            Game.scene = new THREE.Scene();
+            Game.scene.background = new THREE.Color(0x0a0f1d); 
+            Game.scene.fog = new THREE.FogExp2(0x0a0f1d, 0.012); 
+
+            Game.camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 800);
+            
+            Game.renderer = new THREE.WebGLRenderer({ antialias: true });
+            Game.renderer.setSize(window.innerWidth, window.innerHeight);
+            Game.renderer.shadowMap.enabled = true;
+            Game.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(Game.renderer.domElement);
+
+            // 조명 설정
+            Game.ambientLight = new THREE.AmbientLight(0xffffff, 0.28);
+            Game.scene.add(Game.ambientLight);
+
+            Game.dirLight = new THREE.DirectionalLight(0xddeeff, 0.55);
+            Game.dirLight.position.set(40, 90, 40);
+            Game.dirLight.castShadow = true;
+            Game.dirLight.shadow.mapSize.width = 1024;
+            Game.dirLight.shadow.mapSize.height = 1024;
+            Game.dirLight.shadow.camera.near = 0.5;
+            Game.dirLight.shadow.camera.far = 300;
+            const d = 150;
+            Game.dirLight.shadow.camera.left = -d;
+            Game.dirLight.shadow.camera.right = d;
+            Game.dirLight.shadow.camera.top = d;
+            Game.dirLight.shadow.camera.bottom = -d;
+            Game.scene.add(Game.dirLight);
+
+            // 메모리 및 빌드 성능 극대화를 위한 전역 재질 공유 셋업
+            const roadTex = createRoadTexture();
+            roadTex.wrapS = THREE.RepeatWrapping;
+            roadTex.wrapT = THREE.RepeatWrapping;
+
+            const bldgTex = createBuildingTexture();
+            bldgTex.wrapS = THREE.RepeatWrapping;
+            bldgTex.wrapT = THREE.RepeatWrapping;
+
+            Game.materials = {
+                ground: new THREE.MeshStandardMaterial({ color: 0x070b13, roughness: 0.95, metalness: 0.05 }),
+                road: new THREE.MeshStandardMaterial({ map: roadTex, roughness: 0.85 }),
+                line: new THREE.MeshBasicMaterial({ color: 0xeab308 }),
+                building: new THREE.MeshStandardMaterial({ map: bldgTex, roughness: 0.6, metalness: 0.25 }),
+                trunk: new THREE.MeshStandardMaterial({ color: 0x542307 }),
+                leaves: new THREE.MeshStandardMaterial({ color: 0x064e3b, roughness: 0.9 }),
+                pole: new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.7, roughness: 0.2 })
             };
 
-            document.getElementById('next-btn').onclick = startNextLevel;
+            // 청크 시스템 초기화 실행
+            updateChunkSystem(true);
 
-            document.addEventListener('pointerlockchange', () => {
-                isLocked = document.pointerLockElement === renderer.domElement;
-            });
+            // 버스 생성
+            buildBus();
+            initAudio();
+            setupControls();
 
-            spawnLevel();
+            // 주행 타임 측정 가동
+            setInterval(() => {
+                if (Game.busPhysics && !Game.busPhysics.handbrake && Math.abs(Game.busPhysics.speed) > 0.005) {
+                    Game.driveTime += 1;
+                    updateTimeHUD();
+                }
+            }, 1000);
+
+            window.addEventListener('resize', onWindowResize);
             animate();
         }
 
-        function createGun() {
-            gunGroup = new THREE.Group();
-            const body = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.15, 0.5), new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 0.8, roughness: 0.2 }));
-            gunGroup.add(body);
-            const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4), new THREE.MeshStandardMaterial({ color: 0x050505 }));
-            barrel.rotation.x = Math.PI / 2; barrel.position.z = -0.3;
-            gunGroup.add(barrel);
-            const grip = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.25, 0.1), new THREE.MeshStandardMaterial({ color: 0x1a1a1a }));
-            grip.position.y = -0.15; grip.position.z = 0.15; grip.rotation.x = -0.2;
-            gunGroup.add(grip);
-            muzzleFlash = new THREE.PointLight(0xffaa00, 0, 5);
-            muzzleFlash.position.z = -0.6;
-            gunGroup.add(muzzleFlash);
-            const flashMesh = new THREE.Mesh(new THREE.SphereGeometry(0.1), new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0 }));
-            flashMesh.position.z = -0.6;
-            gunGroup.add(flashMesh);
-            muzzleFlash.mesh = flashMesh;
-            gunGroup.position.set(0.3, -0.3, -0.5);
-            camera.add(gunGroup);
-        }
-
-        function handleKey(code, val) {
-            if(code === 'KeyW') keys.w = val;
-            if(code === 'KeyS') keys.s = val;
-            if(code === 'KeyA') keys.a = val;
-            if(code === 'KeyD') keys.d = val;
-            if(code === 'ShiftLeft') keys.shift = val;
-        }
-
-        function generateMaze(width, height, seed) {
-            let random = () => { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; };
-            let maze = Array(height).fill().map(() => Array(width).fill(1));
-            let stack = [[1, 1]]; maze[1][1] = 0;
-            while (stack.length > 0) {
-                let [x, y] = stack[stack.length - 1];
-                let dirs = [[0, 2], [0, -2], [2, 0], [-2, 0]].filter(([dx, dy]) => {
-                    let nx = x + dx, ny = y + dy;
-                    return nx > 0 && nx < width - 1 && ny > 0 && ny < height - 1 && maze[ny][nx] === 1;
-                });
-                if (dirs.length > 0) {
-                    let [dx, dy] = dirs[Math.floor(random() * dirs.length)];
-                    maze[y + dy / 2][x + dx / 2] = 0; maze[y + dy][x + dx] = 0; stack.push([x + dx, y + dy]);
-                } else stack.pop();
-            }
-            return maze;
-        }
-
-        function buildChunk(cx, cz) {
-            const key = `${cx},${cz}`;
-            if (chunks.has(key)) return;
+        function buildTreeMesh() {
             const group = new THREE.Group();
-            const mazeSize = GRID_RES;
-            const cellSize = CHUNK_SIZE / mazeSize;
-            const maze = generateMaze(mazeSize + 1, mazeSize + 1, Math.abs(cx * 13 + cz * 37 + currentLevel));
-            const wallGeo = new THREE.BoxGeometry(cellSize + 0.1, 4, cellSize + 0.1);
-            for (let y = 0; y <= mazeSize; y++) {
-                for (let x = 0; x <= mazeSize; x++) {
-                    const px = cx * CHUNK_SIZE + x * cellSize;
-                    const pz = cz * CHUNK_SIZE + y * cellSize;
-                    if (Math.abs(px - 2) < 4 && Math.abs(pz - 2) < 4) continue;
-                    if (maze[y][x] === 1) {
-                        const wall = new THREE.Mesh(wallGeo, matWall);
-                        wall.position.set(px, 2, pz);
-                        group.add(wall); colliders.push(wall);
+            
+            const trunkGeo = new THREE.CylinderGeometry(0.2, 0.35, 3.2, 8);
+            const trunk = new THREE.Mesh(trunkGeo, Game.materials.trunk);
+            trunk.position.y = 1.6;
+            trunk.castShadow = true;
+            group.add(trunk);
+
+            const leavesGeo = new THREE.DodecahedronGeometry(2, 1);
+            const leaves = new THREE.Mesh(leavesGeo, Game.materials.leaves);
+            leaves.position.y = 4.0;
+            leaves.castShadow = true;
+            group.add(leaves);
+
+            return group;
+        }
+
+        function buildStreetlightMesh() {
+            const group = new THREE.Group();
+            
+            const poleGeo = new THREE.CylinderGeometry(0.12, 0.12, 6.5, 8);
+            const pole = new THREE.Mesh(poleGeo, Game.materials.pole);
+            pole.position.y = 3.25;
+            pole.castShadow = true;
+            group.add(pole);
+
+            const armGeo = new THREE.BoxGeometry(1.4, 0.2, 0.3);
+            const arm = new THREE.Mesh(armGeo, Game.materials.pole);
+            arm.position.set(0.6, 6.4, 0);
+            group.add(arm);
+
+            return group;
+        }
+
+        function updateChunkSystem(forced = false) {
+            const px = Game.busPhysics ? Game.busPhysics.x : 0;
+            const pz = Game.busPhysics ? Game.busPhysics.z : 0;
+
+            const size = Game.chunkSize;
+            const currentGx = Math.floor((px + size / 2) / size);
+            const currentGz = Math.floor((pz + size / 2) / size);
+
+            if (!forced && currentGx === Game.lastGx && currentGz === Game.lastGz) {
+                return; // 청크 경계를 벗어나지 않았을 때는 성능 낭비 차단
+            }
+
+            Game.lastGx = currentGx;
+            Game.lastGz = currentGz;
+
+            const activeKeys = new Set();
+
+            // 3x3 범위 청크 계산
+            for (let dx = -Game.visibleRadius; dx <= Game.visibleRadius; dx++) {
+                for (let dz = -Game.visibleRadius; dz <= Game.visibleRadius; dz++) {
+                    const gx = currentGx + dx;
+                    const gz = currentGz + dz;
+                    const key = `${gx}_${gz}`;
+                    activeKeys.add(key);
+
+                    if (!Game.chunks[key]) {
+                        generateChunk(gx, gz);
                     }
                 }
             }
-            const floor = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE), matFloor);
-            floor.rotation.x = -Math.PI/2;
-            floor.position.set(cx * CHUNK_SIZE + CHUNK_SIZE/2, 0, cz * CHUNK_SIZE + CHUNK_SIZE/2);
-            group.add(floor);
-            const ceil = new THREE.Mesh(new THREE.PlaneGeometry(CHUNK_SIZE, CHUNK_SIZE), matCeil);
-            ceil.rotation.x = Math.PI/2;
-            ceil.position.set(cx * CHUNK_SIZE + CHUNK_SIZE/2, 4, cz * CHUNK_SIZE + CHUNK_SIZE/2);
-            group.add(ceil);
 
-            if (Math.random() > 0.8) {
-                const item = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.4, 0.4), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
-                item.position.set(cx * CHUNK_SIZE + Math.random() * CHUNK_SIZE, 0.5, cz * CHUNK_SIZE + Math.random() * CHUNK_SIZE);
-                pickups.push(item); group.add(item);
+            // 범위에서 완전히 벗어난 청크 가비지 컬렉션 및 소멸 제거 (메모리 완전 누수차단)
+            for (let key in Game.chunks) {
+                if (!activeKeys.has(key)) {
+                    unloadChunk(key);
+                }
             }
 
-            // Exit Spawning (2 Exits per Level)
-            if (Math.random() > 0.93 && exits.length < 2) { 
-                const exit = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 16), new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6 }));
-                exit.position.set(cx * CHUNK_SIZE + CHUNK_SIZE/2, 1.5, cz * CHUNK_SIZE + CHUNK_SIZE/2);
-                const light = new THREE.PointLight(0xffffff, 2, 10);
-                exit.add(light);
-                exits.push(exit); group.add(exit);
-            }
-
-            scene.add(group);
-            chunks.set(key, group);
-        }
-
-        function spawnLevel() {
-            document.getElementById('level-status').innerText = `LEVEL: ${currentLevel} / 3`;
-            entities.forEach(e => scene.remove(e.mesh));
-            entities = [];
+            rebuildColliders();
             
-            // 엔티티 수를 1마리로 고정
-            for(let i=0; i < 1; i++) {
-                const entGroup = new THREE.Group();
-                const body = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 2.5), new THREE.MeshBasicMaterial({ color: 0x000000 }));
-                entGroup.add(body);
-                const head = new THREE.Mesh(new THREE.SphereGeometry(0.35), new THREE.MeshBasicMaterial({ color: 0x000000 }));
-                head.position.y = 1.4; entGroup.add(head);
-                // 플레이어로부터 일정 거리 이상 떨어진 곳에서 스폰
-                entGroup.position.set(20 + Math.random()*80, 1.25, 20 + Math.random()*80);
-                scene.add(entGroup);
-                entities.push({ mesh: entGroup, speed: 4.5 + (currentLevel * 1.0) }); // 속도는 단계마다 증가
+            // HUD 카운터 업데이트
+            const countTag = document.getElementById('active-chunks-count');
+            if (countTag) {
+                countTag.textContent = `로딩 청크: ${Object.keys(Game.chunks).length}개 (메모리 최적화)`;
             }
         }
 
-        function shoot() {
-            if(!isLocked || ammo <= 0 || isGameOver) return;
-            recoilAmount = 0.15; ammo--;
-            document.getElementById('ammo-count').innerText = ammo;
-            playShootSound();
-            muzzleFlash.intensity = 5; muzzleFlash.mesh.material.opacity = 0.8;
-            setTimeout(() => { muzzleFlash.intensity = 0; muzzleFlash.mesh.material.opacity = 0; }, 50);
-            const ray = new THREE.Raycaster();
-            ray.setFromCamera(new THREE.Vector2(0,0), camera);
-            const hits = ray.intersectObjects(entities.map(e => e.mesh), true);
-            if(hits.length > 0) {
-                let hitObj = hits[0].object;
-                while(hitObj.parent && !entities.find(e => e.mesh === hitObj)) hitObj = hitObj.parent;
-                const ent = entities.find(e => e.mesh === hitObj);
-                if(ent) {
-                    // 퇴치 시 아주 멀리 텔레포트
-                    ent.mesh.position.set(100 + Math.random()*100, 1.25, 100 + Math.random()*100);
-                    showMessage("엔티티 퇴치! 잠시 동안 안전합니다.");
+        function generateChunk(gx, gz) {
+            const key = `${gx}_${gz}`;
+            const group = new THREE.Group();
+            const size = Game.chunkSize;
+            const centerX = gx * size;
+            const centerZ = gz * size;
+
+            // 청크별 바닥 대지 생성
+            const groundGeo = new THREE.PlaneGeometry(size, size);
+            const ground = new THREE.Mesh(groundGeo, Game.materials.ground);
+            ground.rotation.x = -Math.PI / 2;
+            ground.position.set(centerX, 0, centerZ);
+            ground.receiveShadow = true;
+            group.add(ground);
+
+            // 절차형 연계 도로 (동서남북 교차 무한 그리드)
+            // 가로 도로
+            const roadH = new THREE.Mesh(new THREE.PlaneGeometry(size, 26), Game.materials.road);
+            roadH.rotation.x = -Math.PI / 2;
+            roadH.position.set(centerX, 0.01, centerZ);
+            roadH.receiveShadow = true;
+            group.add(roadH);
+
+            // 세로 도로
+            const roadV = new THREE.Mesh(new THREE.PlaneGeometry(26, size), Game.materials.road);
+            roadV.rotation.x = -Math.PI / 2;
+            roadV.position.set(centerX, 0.012, centerZ);
+            roadV.receiveShadow = true;
+            group.add(roadV);
+
+            // 노란 중앙선 그리기
+            const lineH = new THREE.Mesh(new THREE.PlaneGeometry(size, 0.35), Game.materials.line);
+            lineH.rotation.x = -Math.PI / 2;
+            lineH.position.set(centerX, 0.02, centerZ);
+            group.add(lineH);
+
+            const lineV = new THREE.Mesh(new THREE.PlaneGeometry(0.35, size), Game.materials.line);
+            lineV.rotation.x = -Math.PI / 2;
+            lineV.position.set(centerX, 0.022, centerZ);
+            group.add(lineV);
+
+            const colliders = [];
+
+            // 빌딩 생성 제한 구역 (사거리 중심 도로 침범 차단)
+            const bldgMargin = 22; 
+            const quads = [
+                // 4개의 쿼드런트 구역 정의
+                { minX: centerX - size/2 + 8, maxX: centerX - bldgMargin, minZ: centerZ - size/2 + 8, maxZ: centerZ - bldgMargin },
+                { minX: centerX + bldgMargin, maxX: centerX + size/2 - 8, minZ: centerZ - size/2 + 8, maxZ: centerZ - bldgMargin },
+                { minX: centerX - size/2 + 8, maxX: centerX - bldgMargin, minZ: centerZ + bldgMargin, maxZ: centerZ + size/2 - 8 },
+                { minX: centerX + bldgMargin, maxX: centerX + size/2 - 8, minZ: centerZ + bldgMargin, maxZ: centerZ + size/2 - 8 }
+            ];
+
+            quads.forEach((quad) => {
+                const bldgCount = 3 + Math.floor(Math.random() * 2);
+                for (let i = 0; i < bldgCount; i++) {
+                    const bx = quad.minX + Math.random() * (quad.maxX - quad.minX - 22);
+                    const bz = quad.minZ + Math.random() * (quad.maxZ - quad.minZ - 22);
+                    
+                    const w = 18 + Math.random() * 14;
+                    const d = 18 + Math.random() * 14;
+                    const h = 25 + Math.random() * 65;
+
+                    const bGeo = new THREE.BoxGeometry(w, h, d);
+                    const bldg = new THREE.Mesh(bGeo, Game.materials.building);
+                    bldg.position.set(bx + w/2, h/2, bz + d/2);
+                    bldg.castShadow = true;
+                    bldg.receiveShadow = true;
+                    group.add(bldg);
+
+                    // 충돌 감지용 박스 생성
+                    const box = new THREE.Box3().setFromObject(bldg);
+                    colliders.push({ box: box, mesh: bldg });
+                }
+
+                // 인도 가로수 나무 배치
+                for (let k = 0; k < 2; k++) {
+                    const tx = quad.minX + Math.random() * (quad.maxX - quad.minX);
+                    const tz = quad.minZ + Math.random() * (quad.maxZ - quad.minZ);
+                    const tree = buildTreeMesh();
+                    tree.position.set(tx, 0, tz);
+                    group.add(tree);
+                }
+            });
+
+            // 가로변 가로등 설치
+            const poleOffsets = [
+                { x: -15, z: -15 }, { x: 15, z: -15 },
+                { x: -15, z: 15 }, { x: 15, z: 15 }
+            ];
+            poleOffsets.forEach(off => {
+                const pole = buildStreetlightMesh();
+                pole.position.set(centerX + off.x, 0, centerZ + off.z);
+                group.add(pole);
+            });
+
+            Game.scene.add(group);
+            Game.chunks[key] = { group, colliders, gx, gz };
+        }
+
+        function unloadChunk(key) {
+            const chunk = Game.chunks[key];
+            if (!chunk) return;
+
+            Game.scene.remove(chunk.group);
+            
+            // 지오메트리 수집 메모리 비우기
+            chunk.group.traverse((child) => {
+                if (child.isMesh) {
+                    if (child.geometry) {
+                        child.geometry.dispose();
+                    }
+                    // 주의: 재질(materials)은 공유 전역 재질을 쓰고 있으므로 절대 dispose하면 안 됨!
+                }
+            });
+
+            delete Game.chunks[key];
+        }
+
+        function rebuildColliders() {
+            Game.colliders = [];
+            for (let key in Game.chunks) {
+                Game.colliders.push(...Game.chunks[key].colliders);
+            }
+        }
+
+        function buildBus() {
+            Game.bus = new THREE.Group();
+            const busColorHex = Game.busColor === 'blue' ? 0x2563eb : 0x059669;
+
+            // 1. 관성 서스펜션 반응(롤, 피치)을 독립 구현하기 위한 차체 상단 바디 프레임 분할
+            Game.busBodyMesh = new THREE.Group();
+
+            const bodyGeo = new THREE.BoxGeometry(3.6, 3.2, 12);
+            const bodyMat = new THREE.MeshStandardMaterial({ 
+                color: busColorHex, 
+                roughness: 0.3, 
+                metalness: 0.5 
+            });
+            const body = new THREE.Mesh(bodyGeo, bodyMat);
+            body.position.y = 1.6; // 피벗 포인트 조정을 위한 상대 좌표 셋업
+            body.castShadow = true;
+            body.receiveShadow = true;
+            Game.busBodyMesh.add(body);
+
+            // 상단 환풍 유닛
+            const roofGeo = new THREE.BoxGeometry(2.8, 0.4, 5);
+            const roofMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0 });
+            const roofUnit = new THREE.Mesh(roofGeo, roofMat);
+            roofUnit.position.set(0, 3.3, 1);
+            roofUnit.castShadow = true;
+            Game.busBodyMesh.add(roofUnit);
+
+            // 앞유리
+            const windshieldGeo = new THREE.BoxGeometry(3.4, 1.6, 0.1);
+            const glassMat = new THREE.MeshStandardMaterial({ 
+                color: 0x020617, 
+                roughness: 0.05, 
+                metalness: 0.9, 
+                transparent: true, 
+                opacity: 0.7 
+            });
+            const windshield = new THREE.Mesh(windshieldGeo, glassMat);
+            windshield.position.set(0, 2.2, 6.01);
+            Game.busBodyMesh.add(windshield);
+
+            // 양옆 대형 전경창
+            const windowGeo = new THREE.BoxGeometry(0.1, 1.2, 1.8);
+            const sideWindowCoords = [-3.8, -1.8, 0.2, 2.2];
+
+            sideWindowCoords.forEach(zPos => {
+                const winLeft = new THREE.Mesh(windowGeo, glassMat);
+                winLeft.position.set(-1.81, 2.2, zPos);
+                Game.busBodyMesh.add(winLeft);
+
+                const winRight = new THREE.Mesh(windowGeo, glassMat);
+                winRight.position.set(1.81, 2.2, zPos);
+                Game.busBodyMesh.add(winRight);
+            });
+
+            // 헤드라이트 벌브
+            const lightGlowGeo = new THREE.BoxGeometry(0.5, 0.2, 0.1);
+            const glowMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            
+            const headLeft = new THREE.Mesh(lightGlowGeo, glowMat);
+            headLeft.position.set(-1.3, 0.6, 6.01);
+            Game.busBodyMesh.add(headLeft);
+
+            const headRight = new THREE.Mesh(lightGlowGeo, glowMat);
+            headRight.position.set(1.3, 0.6, 6.01);
+            Game.busBodyMesh.add(headRight);
+
+            // 밤주행 전용 스포트라이트 라이팅 투사체
+            const headSpotLeft = new THREE.SpotLight(0xfff9e6, 0, 45, Math.PI/4.5, 0.5, 1);
+            headSpotLeft.position.set(-1.3, 0.6, 6.1);
+            headSpotLeft.target.position.set(-1.3, -0.5, 30);
+            Game.busBodyMesh.add(headSpotLeft);
+            Game.busBodyMesh.add(headSpotLeft.target);
+            Game.busPhysics.headSpotLeft = headSpotLeft; 
+
+            const headSpotRight = new THREE.SpotLight(0xfff9e6, 0, 45, Math.PI/4.5, 0.5, 1);
+            headSpotRight.position.set(1.3, 0.6, 6.1);
+            headSpotRight.target.position.set(1.3, -0.5, 30);
+            Game.busBodyMesh.add(headSpotRight);
+            Game.busBodyMesh.add(headSpotRight.target);
+            Game.busPhysics.headSpotRight = headSpotRight; 
+
+            // 앞쪽 출입문
+            const doorGeo = new THREE.BoxGeometry(0.1, 2.2, 1.4);
+            const doorMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.5 });
+            Game.busPhysics.doorMesh = new THREE.Mesh(doorGeo, doorMat);
+            Game.busPhysics.doorMesh.position.set(1.81, 1.3, 4.3); 
+            Game.busBodyMesh.add(Game.busPhysics.doorMesh);
+
+            // 전체 보디프레임을 버스 중심 루트 그룹에 마운트
+            Game.busBodyMesh.position.y = 0.5; // 서스펜션 휠 클리어런스 확보
+            Game.bus.add(Game.busBodyMesh);
+
+            // 2. 타이어 서브 하드웨어 (바디 프레임의 흔들림에 영향 받지 않도록 버스 루트 그룹에 직속 마운트)
+            const wheelGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.9, 24);
+            const wheelMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.82 });
+            
+            const wheelCoords = [
+                { x: -1.85, y: 0.8, z: 3.8, isFront: true },  
+                { x: 1.85, y: 0.8, z: 3.8, isFront: true },   
+                { x: -1.85, y: 0.8, z: -3.8, isFront: false }, 
+                { x: 1.85, y: 0.8, z: -3.8, isFront: false }  
+            ];
+
+            wheelCoords.forEach((coord) => {
+                const wheelPivot = new THREE.Group();
+                wheelPivot.position.set(coord.x, coord.y, coord.z);
+
+                const wheelMesh = new THREE.Mesh(wheelGeo, wheelMat);
+                wheelMesh.rotation.z = Math.PI / 2;
+                wheelMesh.castShadow = true;
+                wheelPivot.add(wheelMesh);
+
+                Game.bus.add(wheelPivot);
+
+                if (coord.isFront) {
+                    Game.busPhysics.frontWheels.push(wheelPivot); 
+                }
+            });
+
+            Game.bus.position.set(0, 0, 0);
+            Game.scene.add(Game.bus);
+            Game.busBoundBox = new THREE.Box3();
+        }
+
+        function setupControls() {
+            window.addEventListener('keydown', (e) => {
+                const key = e.key.toLowerCase();
+                if (Game.audioContext && Game.audioContext.state === 'suspended') {
+                    Game.audioContext.resume();
+                }
+
+                if (key === 'w' || e.key === 'ArrowUp') Game.keys.w = true;
+                if (key === 's' || e.key === 'ArrowDown') Game.keys.s = true;
+                if (key === 'a' || e.key === 'ArrowLeft') Game.keys.a = true;
+                if (key === 'd' || e.key === 'ArrowRight') Game.keys.d = true;
+                
+                if (key === 'e') toggleDoor();
+                if (key === 'h') triggerHorn();
+                if (key === 'l') toggleLights();
+                if (key === 'g') toggleGear();
+                if (key === 'c') toggleCamera();
+            });
+
+            window.addEventListener('keyup', (e) => {
+                const key = e.key.toLowerCase();
+                if (key === 'w' || e.key === 'ArrowUp') Game.keys.w = false;
+                if (key === 's' || e.key === 'ArrowDown') Game.keys.s = false;
+                if (key === 'a' || e.key === 'ArrowLeft') Game.keys.a = false;
+                if (key === 'd' || e.key === 'ArrowRight') Game.keys.d = false;
+            });
+
+            // UI 제어 장치 연계
+            document.getElementById('btn-door').addEventListener('click', toggleDoor);
+            document.getElementById('btn-horn').addEventListener('click', triggerHorn);
+            document.getElementById('btn-light').addEventListener('click', toggleLights);
+            document.getElementById('btn-gear').addEventListener('click', toggleGear);
+            document.getElementById('btn-camera').addEventListener('click', toggleCamera);
+            document.getElementById('btn-weather').addEventListener('click', toggleWeather);
+            
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                Game.busPhysics.x = 0;
+                Game.busPhysics.z = 0;
+                Game.busPhysics.rotation = 0;
+                Game.busPhysics.speed = 0;
+                Game.busPhysics.handbrake = true;
+                Game.bus.position.set(0, 0, 0);
+                Game.bus.rotation.set(0, 0, 0);
+                const hbIndicator = document.getElementById('handbrake-indicator');
+                if (hbIndicator) hbIndicator.className = 'text-rose-600 text-sm font-bold animate-bounce';
+                updateAnnouncement("차량이 처음 출발 지점으로 원격 리셋(워프)되었습니다.");
+                updateChunkSystem(true);
+            });
+
+            document.getElementById('btn-sound').addEventListener('click', () => {
+                Game.soundEnabled = !Game.soundEnabled;
+                const icon = document.getElementById('btn-sound').querySelector('i');
+                if (Game.soundEnabled) {
+                    icon.className = 'fa-solid fa-volume-high text-lg';
+                    if (!Game.audioContext) initAudio();
+                    else Game.audioContext.resume();
+                } else {
+                    icon.className = 'fa-solid fa-volume-xmark text-lg';
+                    if (Game.audioContext) Game.audioContext.suspend();
+                }
+            });
+
+            setupMobileTouchEvents();
+        }
+
+        function setupMobileTouchEvents() {
+            const leftBtn = document.getElementById('btn-steer-left');
+            const rightBtn = document.getElementById('btn-steer-right');
+            const gasBtn = document.getElementById('btn-pedal-gas');
+            const brakeBtn = document.getElementById('btn-pedal-brake');
+
+            const bindControl = (element, keyName) => {
+                element.addEventListener('touchstart', (e) => { 
+                    e.preventDefault(); 
+                    Game.keys[keyName] = true; 
+                    if (Game.audioContext && Game.audioContext.state === 'suspended') {
+                        Game.audioContext.resume();
+                    }
+                });
+                element.addEventListener('touchend', (e) => { 
+                    e.preventDefault(); 
+                    Game.keys[keyName] = false; 
+                });
+
+                element.addEventListener('mousedown', (e) => { 
+                    e.preventDefault();
+                    Game.keys[keyName] = true; 
+                });
+                element.addEventListener('mouseup', (e) => { 
+                    e.preventDefault();
+                    Game.keys[keyName] = false; 
+                });
+                element.addEventListener('mouseleave', (e) => { 
+                    e.preventDefault();
+                    Game.keys[keyName] = false; 
+                });
+            };
+
+            bindControl(leftBtn, 'a');
+            bindControl(rightBtn, 'd');
+            bindControl(gasBtn, 'w');
+            bindControl(brakeBtn, 's');
+        }
+
+        function toggleWeather() {
+            const btn = document.getElementById('btn-weather');
+            const icon = btn.querySelector('i');
+            const text = document.getElementById('weather-text');
+
+            if (Game.timeOfDay === 'night') {
+                Game.timeOfDay = 'day';
+                text.textContent = '맑은 낮';
+                icon.className = 'fa-solid fa-sun text-lg text-amber-400';
+                
+                Game.scene.background.setHex(0xbae6fd); 
+                Game.scene.fog.color.setHex(0xbae6fd);
+                Game.ambientLight.intensity = 0.85;
+                Game.dirLight.intensity = 1.0;
+                Game.dirLight.color.setHex(0xffffff);
+                updateAnnouncement("⛅ 화창한 낮 시간대로 설정되어 주행 안전 거리가 우수하게 확보되었습니다.");
+            } else if (Game.timeOfDay === 'day') {
+                Game.timeOfDay = 'sunset';
+                text.textContent = '아늑한 노을';
+                icon.className = 'fa-solid fa-cloud-sun text-lg text-orange-400';
+
+                Game.scene.background.setHex(0xfeb085); 
+                Game.scene.fog.color.setHex(0xfeb085);
+                Game.ambientLight.intensity = 0.6;
+                Game.dirLight.intensity = 0.8;
+                Game.dirLight.color.setHex(0xeab308); 
+                updateAnnouncement("🌅 따뜻한 노을이 수평선 가득 펼쳐진 감성 드라이브 코스입니다.");
+            } else {
+                Game.timeOfDay = 'night';
+                text.textContent = '도심 야경';
+                icon.className = 'fa-solid fa-moon text-lg text-indigo-400';
+
+                Game.scene.background.setHex(0x0a0f1d); 
+                Game.scene.fog.color.setHex(0x0a0f1d);
+                Game.ambientLight.intensity = 0.28;
+                Game.dirLight.intensity = 0.55;
+                Game.dirLight.color.setHex(0xddeeff);
+                updateAnnouncement("🌙 가로등이 반짝이는 도심 야간 안전운행 시간대로 전환되었습니다.");
+            }
+        }
+
+        function toggleGear() {
+            if (Game.busPhysics.gear === 'D') {
+                Game.busPhysics.gear = 'R';
+                updateGearUI('R');
+                updateAnnouncement("기어 레버가 [후진 R단]에 체결되어 후진 기동이 준비되었습니다.");
+            } else {
+                Game.busPhysics.gear = 'D';
+                updateGearUI('D');
+                updateAnnouncement("기어 레버가 [주행 D단]에 체결되어 전진 기동이 준비되었습니다.");
+            }
+        }
+
+        function updateGearUI(gear) {
+            ['P', 'R', 'N', 'D'].forEach(g => {
+                const badge = document.getElementById(`gear-${g}`);
+                if (g === gear) {
+                    badge.className = 'px-2 py-0.5 text-xs font-bold rounded bg-blue-600 text-white font-black animate-pulse';
+                } else {
+                    badge.className = 'px-2 py-0.5 text-xs font-bold rounded bg-slate-800 text-slate-600';
+                }
+            });
+            document.getElementById('gear-btn-text').textContent = `기어 ${gear} (G)`;
+        }
+
+        function toggleDoor() {
+            if (Math.abs(Game.busPhysics.speed) > 0.05) {
+                updateAnnouncement("⚠️ 주행 속도가 감지되어 앞문 오작동 개방이 자동으로 방지되었습니다.");
+                return;
+            }
+
+            Game.busPhysics.doorOpen = !Game.busPhysics.doorOpen;
+            const doorIndicator = document.getElementById('door-indicator');
+            const btnDoor = document.getElementById('btn-door');
+
+            if (Game.busPhysics.doorOpen) {
+                doorIndicator.className = 'text-emerald-500 text-sm font-extrabold animate-pulse';
+                btnDoor.className = 'flex-1 h-14 bg-red-700 hover:bg-red-600 text-white rounded-xl font-bold flex flex-col items-center justify-center transition shadow-lg';
+                btnDoor.querySelector('span').textContent = "문 닫기 (E)";
+                
+                Game.busPhysics.doorMesh.position.x = 2.4;
+                updateAnnouncement("버스 주 승하차 전면용 수압 슬라이딩 도어가 활짝 열렸습니다.");
+            } else {
+                doorIndicator.className = 'text-slate-600 text-sm';
+                btnDoor.className = 'flex-1 h-14 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold flex flex-col items-center justify-center transition shadow-lg';
+                btnDoor.querySelector('span').textContent = "문 열기 (E)";
+                
+                Game.busPhysics.doorMesh.position.x = 1.81;
+                updateAnnouncement("승차 출입 도어가 수압 차압으로 빈틈없이 완전히 밀봉되었습니다.");
+            }
+        }
+
+        function triggerHorn() {
+            playHorn();
+            const hornBtn = document.getElementById('btn-horn');
+            hornBtn.classList.remove('bg-amber-600');
+            hornBtn.classList.add('bg-yellow-500', 'scale-105');
+            setTimeout(() => {
+                hornBtn.classList.remove('bg-yellow-500', 'scale-105');
+                hornBtn.classList.add('bg-amber-600');
+            }, 150);
+        }
+
+        function toggleLights() {
+            Game.busPhysics.lightsOn = !Game.busPhysics.lightsOn;
+            const lightIndicator = document.getElementById('light-indicator');
+            const btnLight = document.getElementById('btn-light');
+
+            if (Game.busPhysics.lightsOn) {
+                lightIndicator.className = 'text-yellow-400 text-sm font-bold drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]';
+                btnLight.className = 'flex-1 h-14 bg-yellow-600 hover:bg-yellow-500 text-white rounded-xl font-bold flex flex-col items-center justify-center transition shadow-lg border border-yellow-500';
+                
+                Game.busPhysics.headSpotLeft.intensity = 3.5;
+                Game.busPhysics.headSpotRight.intensity = 3.5;
+                updateAnnouncement("전방 3구식 고휘도 할로겐 헤드라이트 벌브가 켜졌습니다.");
+            } else {
+                lightIndicator.className = 'text-slate-600 text-sm';
+                btnLight.className = 'flex-1 h-14 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl font-bold flex flex-col items-center justify-center transition shadow-lg border border-slate-700';
+                
+                Game.busPhysics.headSpotLeft.intensity = 0;
+                Game.busPhysics.headSpotRight.intensity = 0;
+                updateAnnouncement("전면 전조등이 안전하게 소등되었습니다.");
+            }
+        }
+
+        function toggleCamera() {
+            const modes = ['chase', 'driver', 'top'];
+            let currentIdx = modes.indexOf(Game.cameraMode);
+            Game.cameraMode = modes[(currentIdx + 1) % modes.length];
+            updateAnnouncement(`카메라 가상 광학각도가 [${Game.cameraMode.toUpperCase()}] 뷰로 교체 전환되었습니다.`);
+        }
+
+        function updateTimeHUD() {
+            const min = Math.floor(Game.driveTime / 60).toString().padStart(2, '0');
+            const sec = (Game.driveTime % 60).toString().padStart(2, '0');
+            const timeTag = document.getElementById('drive-time');
+            if (timeTag) timeTag.textContent = `${min}:${sec}`;
+        }
+
+        function updateAnnouncement(text) {
+            const bell = document.getElementById('bus-bell-icon');
+            bell.classList.add('animate-bounce', 'text-yellow-400');
+            document.getElementById('announcement-text').innerHTML = text;
+            setTimeout(() => {
+                bell.classList.remove('animate-bounce', 'text-yellow-400');
+            }, 1000);
+        }
+
+        function updatePhysics() {
+            const p = Game.busPhysics;
+
+            // 주행 전진 입력 시 주차 브레이크 오토 홀드 해제
+            if (Game.keys.w && p.handbrake) {
+                p.handbrake = false;
+                const hbIndicator = document.getElementById('handbrake-indicator');
+                if (hbIndicator) hbIndicator.className = 'text-slate-600 text-sm';
+                updateAnnouncement("자동 연동 해제: 전자식 파킹 브레이크 실린더 압력이 안전하게 개방되었습니다.");
+            }
+
+            // 1. 가가속도 계산 및 중량 물리 변조
+            if (p.handbrake) {
+                p.speed *= 0.85;
+                if (Math.abs(p.speed) < 0.001) p.speed = 0;
+            } else {
+                if (Game.keys.w) {
+                    if (p.gear === 'D') {
+                        p.speed += p.acceleration; // 슬uggish 가속 반응
+                        if (p.speed > p.maxSpeed) p.speed = p.maxSpeed;
+                    } else if (p.gear === 'R') {
+                        p.speed -= p.acceleration;
+                        if (p.speed < p.maxReverseSpeed) p.speed = p.maxReverseSpeed;
+                    }
+                } else if (Game.keys.s) {
+                    // 육중한 감속 제동 거리 시뮬레이션
+                    if (p.speed > 0) {
+                        p.speed -= p.deceleration; 
+                        if (p.speed < 0) p.speed = 0;
+                    } else if (p.speed < 0) {
+                        p.speed += p.deceleration;
+                        if (p.speed > 0) p.speed = 0;
+                    }
+                } else {
+                    // 자연 타이어 구름 저항 및 공기 저항
+                    if (p.speed > 0) {
+                        p.speed -= p.friction;
+                        if (p.speed < 0) p.speed = 0;
+                    } else if (p.speed < 0) {
+                        p.speed += p.friction;
+                        if (p.speed > 0) p.speed = 0;
+                    }
+                }
+            }
+
+            // 2. 파워 조향감 핸들링 제어
+            if (Game.keys.a) {
+                p.steerAngle += p.steerSpeed;
+                if (p.steerAngle > p.maxSteer) p.steerAngle = p.maxSteer;
+            } else if (Game.keys.d) {
+                p.steerAngle -= p.steerSpeed;
+                if (p.steerAngle < -p.maxSteer) p.steerAngle = -p.maxSteer;
+            } else {
+                if (p.steerAngle > 0) {
+                    p.steerAngle -= p.steerSpeed * 1.5;
+                    if (p.steerAngle < 0) p.steerAngle = 0;
+                } else if (p.steerAngle < 0) {
+                    p.steerAngle += p.steerSpeed * 1.5;
+                    if (p.steerAngle > 0) p.steerAngle = 0;
+                }
+            }
+
+            // 전면 유압 조향각 바퀴 연동 비주얼화
+            p.frontWheels.forEach(wheel => {
+                wheel.rotation.y = p.steerAngle * 4.8; 
+            });
+
+            const speedMagnitude = Math.abs(p.speed);
+            if (speedMagnitude > 0.005) {
+                const steerDirection = p.speed > 0 ? 1 : -1;
+                p.rotation += p.steerAngle * speedMagnitude * 1.4 * steerDirection;
+            }
+
+            p.x += Math.sin(p.rotation) * p.speed;
+            p.z += Math.cos(p.rotation) * p.speed;
+
+            Game.bus.position.x = p.x;
+            Game.bus.position.z = p.z;
+            Game.bus.rotation.y = p.rotation;
+
+            // 3. 육중한 무게 관성 서스펜션(피칭 및 롤링) 동적 시뮬레이션 연산
+            let targetPitchAngle = 0;
+            if (Game.keys.w) {
+                // 출발 가속 시 후미 스쿼트 피칭 현상
+                targetPitchAngle = p.gear === 'D' ? -0.015 : 0.01;
+            } else if (Game.keys.s && speedMagnitude > 0.01) {
+                // 제동 급감속 시 전면 전면 다이브 피칭 현상
+                targetPitchAngle = p.speed > 0 ? 0.024 : -0.015;
+            }
+            // 코너링 시 원심력에 의한 차체 반대편 보디 롤링 연산
+            let targetRollAngle = -p.steerAngle * p.speed * 2.8; 
+
+            // 서스펜션 스모스 탄성 보간
+            p.currentPitch += (targetPitchAngle - p.currentPitch) * 0.06;
+            p.currentRoll += (targetRollAngle - p.currentRoll) * 0.06;
+
+            // 서스펜션 반응을 버스 상단 바디 프레임에 최종 인가
+            Game.busBodyMesh.rotation.x = p.currentPitch;
+            Game.busBodyMesh.rotation.z = p.currentRoll;
+
+            // 실시간 이동에 따른 무제한 도로망 스포닝 연동 처리 호출
+            updateChunkSystem();
+
+            // 누적 주행 거리 연산
+            if (speedMagnitude > 0.005) {
+                const tickDistance = (speedMagnitude * 0.10) / 60; 
+                Game.mileage += tickDistance;
+                const mileageTag = document.getElementById('drive-distance');
+                if (mileageTag) mileageTag.textContent = `${Game.mileage.toFixed(2)} km`;
+            }
+
+            // 가로 빌딩들과의 물리 충돌 판정 처리
+            Game.busBoundBox.setFromObject(Game.bus);
+            for (let i = 0; i < Game.colliders.length; i++) {
+                const collider = Game.colliders[i];
+                if (Game.busBoundBox.intersectsBox(collider.box)) {
+                    // 중량 버스의 가소적 충격 반발력 반사
+                    p.speed = -p.speed * 0.35; 
+                    p.x += Math.sin(p.rotation) * p.speed * 3.5;
+                    p.z += Math.cos(p.rotation) * p.speed * 3.5;
+                    
+                    updateAnnouncement("💥 [충돌 안내] 빌딩 또는 인도 연석 충돌 감지! 서행하십시오.");
+                    triggerHorn(); 
+                    break;
                 }
             }
         }
 
-        function showMessage(txt) {
-            const box = document.getElementById('message-box');
-            box.innerText = txt; box.style.opacity = 1;
-            setTimeout(() => box.style.opacity = 0, 2000);
+        function updateHUD() {
+            const p = Game.busPhysics;
+            const kmh = Math.floor(Math.abs(p.speed) * 190); 
+
+            document.getElementById('speed-value').textContent = kmh;
+
+            const dashOffset = 301.6 - (301.6 * (kmh / 100));
+            document.getElementById('speedo-gauge').style.strokeDashoffset = Math.max(0, dashOffset);
+
+            let rpm = 700; 
+            if (Math.abs(p.speed) > 0.005) {
+                const ratio = (Math.abs(p.speed) / p.maxSpeed);
+                rpm += Math.floor(ratio * 1800);
+            }
+            const rpmPercent = Math.min(100, (rpm / 2500) * 100);
+            document.getElementById('rpm-bar').style.width = `${rpmPercent}%`;
         }
 
-        function startNextLevel() {
-            if (currentLevel >= 3) {
-                document.getElementById('next-level-screen').classList.add('hidden');
-                document.getElementById('win-screen').classList.remove('hidden');
-                return;
-            }
-            currentLevel++;
-            chunks.forEach(c => scene.remove(c));
-            chunks.clear();
-            colliders = []; exits = []; pickups = [];
-            camera.position.set(2, 1.7, 2);
-            spawnLevel();
-            document.getElementById('next-level-screen').classList.add('hidden');
-            renderer.domElement.requestPointerLock();
-            isGameOver = false;
-        }
+        function updateCamera() {
+            const p = Game.busPhysics;
+            
+            if (Game.cameraMode === 'chase') {
+                const targetCamX = p.x - Math.sin(p.rotation) * 20;
+                const targetCamZ = p.z - Math.cos(p.rotation) * 20;
+                const targetCamY = 8.5; // 좀 더 육중한 부피를 조망하기 위해 높이 및 거리 상향
 
-        function checkCollision(pos) {
-            const radius = 0.4;
-            for(let wall of colliders) {
-                const box = new THREE.Box3().setFromObject(wall);
-                const closest = new THREE.Vector3().copy(pos).clamp(box.min, box.max);
-                if(pos.distanceTo(closest) < radius) return true;
+                Game.camera.position.x += (targetCamX - Game.camera.position.x) * 0.07;
+                Game.camera.position.z += (targetCamZ - Game.camera.position.z) * 0.07;
+                Game.camera.position.y += (targetCamY - Game.camera.position.y) * 0.07;
+                
+                Game.camera.lookAt(p.x, 2.0, p.z);
+
+            } else if (Game.cameraMode === 'driver') {
+                // 운전석 1인칭 헤드마운트 시선 셋업
+                const driverHeadX = p.x + Math.sin(p.rotation) * 4.6;
+                const driverHeadZ = p.z + Math.cos(p.rotation) * 4.6;
+                const driverHeadY = 2.6;
+
+                Game.camera.position.set(driverHeadX, driverHeadY, driverHeadZ);
+                
+                const targetLookX = p.x + Math.sin(p.rotation) * 22;
+                const targetLookZ = p.z + Math.cos(p.rotation) * 22;
+                Game.camera.lookAt(targetLookX, 2.3, targetLookZ);
+
+            } else if (Game.cameraMode === 'top') {
+                Game.camera.position.set(p.x, 70, p.z);
+                Game.camera.lookAt(p.x, 0, p.z);
             }
-            return false;
         }
 
         function animate() {
             requestAnimationFrame(animate);
-            if(!isLocked || isGameOver) return;
 
-            const dt = Math.min(clock.getDelta(), 0.1);
-            const cx = Math.floor(camera.position.x / CHUNK_SIZE);
-            const cz = Math.floor(camera.position.z / CHUNK_SIZE);
-            for(let i=-1; i<=1; i++) for(let j=-1; j<=1; j++) buildChunk(cx+i, cz+j);
+            updatePhysics();
+            updateEngineSound();
+            updateCamera();
+            updateHUD();
 
-            let isRunning = keys.shift && stamina > 0;
-            let currentSpeed = isRunning ? 9.0 : 5.5;
-            if(isRunning && (keys.w||keys.s||keys.a||keys.d)) stamina -= dt * 30;
-            else stamina = Math.min(100, stamina + dt * 20);
-            
-            const stamCont = document.getElementById('stamina-container');
-            if(stamina < 100) {
-                stamCont.style.display = 'block';
-                document.getElementById('stamina-fill').style.width = stamina + '%';
-            } else stamCont.style.display = 'none';
-
-            const move = new THREE.Vector3();
-            if(keys.w) move.z -= 1; if(keys.s) move.z += 1;
-            if(keys.a) move.x -= 1; if(keys.d) move.x += 1;
-            move.normalize().applyQuaternion(new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0)));
-            
-            velocity.copy(move).multiplyScalar(currentSpeed);
-            const nextX = new THREE.Vector3(camera.position.x + velocity.x * dt, camera.position.y, camera.position.z);
-            if(!checkCollision(nextX)) camera.position.x = nextX.x;
-            const nextZ = new THREE.Vector3(camera.position.x, camera.position.y, camera.position.z + velocity.z * dt);
-            if(!checkCollision(nextZ)) camera.position.z = nextZ.z;
-
-            camera.quaternion.setFromEuler(new THREE.Euler(pitch, yaw, 0, 'YXZ'));
-            
-            if(move.length() > 0) {
-                const stepInterval = isRunning ? 0.22 : 0.4;
-                if (Date.now() - lastStepTime > stepInterval * 1000) {
-                    playFootstep(isRunning);
-                    lastStepTime = Date.now();
-                }
-                bobbing += dt * (isRunning ? 16 : 10);
-                camera.position.y = 1.7 + Math.sin(bobbing) * 0.06;
-                gunGroup.position.x = 0.3 + Math.cos(bobbing * 0.5) * 0.015;
-                gunGroup.position.y = -0.3 + Math.sin(bobbing) * 0.02;
-            } else {
-                bobbing += dt * 2.5;
-                gunGroup.position.y = -0.3 + Math.sin(bobbing) * 0.006;
-            }
-
-            gunGroup.position.z = -0.5 + recoilAmount;
-            recoilAmount *= 0.82;
-
-            let closestEntityDist = 100;
-            entities.forEach(ent => {
-                const dist = ent.mesh.position.distanceTo(camera.position);
-                closestEntityDist = Math.min(closestEntityDist, dist);
-                const dir = new THREE.Vector3().subVectors(camera.position, ent.mesh.position).normalize();
-                ent.mesh.position.addScaledVector(dir, ent.speed * dt);
-                ent.mesh.lookAt(camera.position.x, 1.25, camera.position.z);
-                if(dist < 1.3) {
-                    isGameOver = true; document.exitPointerLock();
-                    document.getElementById('game-over-screen').classList.remove('hidden');
-                }
-            });
-
-            if (Math.random() > 0.85) playEntitySound(closestEntityDist);
-
-            pickups = pickups.filter(p => {
-                if(camera.position.distanceTo(p.position) < 1.8) {
-                    ammo = Math.min(20, ammo + 6);
-                    document.getElementById('ammo-count').innerText = ammo;
-                    p.parent.remove(p); showMessage("배터리 팩 획득"); return false;
-                }
-                return true;
-            });
-
-            exits.forEach(ex => {
-                if(camera.position.distanceTo(ex.position) < 2.5) {
-                    isGameOver = true;
-                    document.exitPointerLock();
-                    if(currentLevel >= 3) {
-                        document.getElementById('win-screen').classList.remove('hidden');
-                    } else {
-                        document.getElementById('next-level-text').innerText = `Level ${currentLevel} 탈출 성공.`;
-                        document.getElementById('next-level-screen').classList.remove('hidden');
-                    }
-                }
-            });
-
-            renderer.render(scene, camera);
+            Game.renderer.render(Game.scene, Game.camera);
         }
 
-        window.onresize = () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        };
-
-        init();
+        function onWindowResize() {
+            Game.camera.aspect = window.innerWidth / window.innerHeight;
+            Game.camera.updateProjectionMatrix();
+            Game.renderer.setSize(window.innerWidth, window.innerHeight);
+        }
     </script>
 </body>
 </html>
